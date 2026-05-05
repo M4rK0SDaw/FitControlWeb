@@ -1,0 +1,59 @@
+﻿@model FitControlWeb.ViewModels.MetodoPagoCreateViewModel
+
+@{
+    ViewData["Title"] = "Nuevo método de pago";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Nuevo método de pago</h2>
+            <p class="text-muted mb-0">Crear una nueva forma de pago</p>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        }
+
+        <div class="info-box">
+            <h5 class="fw-bold mb-3">Datos del método</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombre" class="form-label"></label>
+                    <input asp-for="Nombre"
+                           class="form-control"
+                           placeholder="Ej: Efectivo, Bizum, Tarjeta..." />
+                    <span asp-validation-for="Nombre" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                Cancelar
+            </a>
+
+            <button type="submit" class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar método
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

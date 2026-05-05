@@ -1,0 +1,94 @@
+﻿@model FitControlWeb.ViewModels.UsuarioCreateViewModel
+
+@{
+    ViewData["Title"] = "Nuevo usuario";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Nuevo usuario</h2>
+            <p class="text-muted mb-0">Crear un nuevo usuario del sistema</p>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    @* <form asp-action="Create" method="post"> *@
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+    
+        @Html.AntiForgeryToken()
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
+        }
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" placeholder="Nombre" />
+                <span asp-validation-for="Nombre" class="text-danger small"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Apellidos" class="form-label"></label>
+                <input asp-for="Apellidos" class="form-control" placeholder="Apellidos" />
+                <span asp-validation-for="Apellidos" class="text-danger small"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" placeholder="correo@fitcontrol.com" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Telefono" class="form-label"></label>
+                <input asp-for="Telefono" class="form-control" placeholder="600 000 000" />
+                <span asp-validation-for="Telefono" class="text-danger small"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="RolId" class="form-label">Rol</label>
+                <select asp-for="RolId" asp-items="ViewBag.Roles" class="form-select">
+                    <option value="">Selecciona un rol</option>
+                </select>
+                <span asp-validation-for="RolId" class="text-danger small"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Password" class="form-label">Contraseña</label>
+                <input asp-for="Password" type="password" class="form-control" placeholder="Contraseña inicial" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Foto" class="form-label">Foto de perfil</label>
+                <input asp-for="Foto"
+                       type="file"
+                       class="form-control"
+                       accept="image/png,image/jpeg,image/webp" />                       
+                <span asp-validation-for="Foto" class="text-danger small"></span>
+            </div>
+        </div>        
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                Cancelar
+            </a>
+
+            <button type="submit" class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar usuario
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

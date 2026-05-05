@@ -1,0 +1,68 @@
+﻿@model FitControlWeb.Models.Entities.Conversacion
+
+@{
+    int usuarioActualId = ViewBag.UsuarioActualId;
+    var otroUsuario = ViewBag.OtroUsuario as FitControlWeb.Models.Entities.Usuario;
+}
+
+<div class="chat-popup-header mb-3">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnVolverChat">
+        <i class="bi bi-arrow-left"></i>
+    </button>
+
+    <div>
+        <h5 class="fw-bold mb-0">@otroUsuario?.Nombre @otroUsuario?.Apellidos</h5>
+        <small class="text-muted">@otroUsuario?.Email</small>
+    </div>
+</div>
+
+<div class="chat-box-popup mb-3" id="chatBoxPopup">
+    @if (!Model.Mensajes.Any())
+    {
+        <div class="alert alert-info mb-0">
+            No hay mensajes todavía.
+        </div>
+    }
+    else
+    {
+        foreach (var m in Model.Mensajes.OrderBy(m => m.FechaEnvio))
+        {
+            bool esMio = m.RemitenteId == usuarioActualId;
+
+            <div class="chat-message @(esMio ? "mine" : "other")">
+                <div class="fw-semibold small mb-1">
+                    @(esMio ? "Tú" : $"{m.Remitente?.Nombre} {m.Remitente?.Apellidos}")
+                </div>
+
+                <div>@m.Contenido</div>
+
+                <div class="chat-time mt-1">
+                    @(m.FechaEnvio?.ToString("dd/MM/yyyy HH:mm") ?? "")
+                    @if (esMio && m.Leido == true)
+                    {
+                        <span> · leído</span>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<form id="chatEnviarForm" method="post">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" name="conversacionId" value="@Model.Id" />
+
+    <div class="d-flex gap-2">
+        <textarea name="contenido"
+                  class="form-control"
+                  rows="2"
+                  maxlength="1000"
+                  required
+                  placeholder="Escribe..."></textarea>
+
+        <button type="submit" class="btn btn-orange">
+            <i class="bi bi-send"></i>
+        </button>
+    </div>
+</form>

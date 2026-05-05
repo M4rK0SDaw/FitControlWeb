@@ -1,0 +1,29 @@
+﻿@model FitControlWeb.Models.Entities.Mensaje
+
+@{
+    int usuarioActualId = ViewBag.UsuarioActualId;
+    bool esMio = Model.RemitenteId == usuarioActualId;
+}
+
+<div class="chat-message @(esMio ? "mine" : "other")">
+    <div class="fw-semibold small mb-1">
+        @if (esMio)
+        {
+            <span>Tú</span>
+        }
+        else
+        {
+            <span>@Model.Remitente?.Nombre @Model.Remitente?.Apellidos</span>
+        }
+    </div>
+
+    <div>@Model.Contenido</div>
+
+    <div class="chat-time mt-1">        
+        @Model.FechaEnvio?.ToString("dd/MM/yyyy HH:mm")
+        @if (esMio && Model.Leido == true)
+        {
+            <span> · leído</span>
+        }
+    </div>
+</div>

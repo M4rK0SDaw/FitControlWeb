@@ -1,0 +1,244 @@
+﻿@model FitControlWeb.Models.Entities.Suscripcion
+
+@{
+    ViewData["Title"] = "Detalle de suscripción";
+
+    bool vencida = Model.FechaFin < DateTime.Today;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Suscripción de @Model.Usuario?.Nombre @Model.Usuario?.Apellidos</h2>
+            <p class="text-muted mb-0">Información completa de la suscripción</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-orange">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+
+
+            @if (ViewBag.TieneFactura == true)
+            {
+                <a asp-controller="Facturas"
+                       asp-action="Details"
+                       asp-route-id="@ViewBag.FacturaId"
+                       class="btn btn-outline-success">
+                    <i class="bi bi-receipt"></i> Ver factura
+                </a>
+            }
+            else
+            {
+                <form asp-controller="Facturas"
+                      asp-action="CrearDesdeSuscripcion"
+                      method="post"
+                      class="d-inline form-facturar">
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" name="suscripcionId" value="@Model.Id" />
+
+                    <button type="button" class="btn btn-outline-success btn-facturar">
+                        <i class="bi bi-receipt"></i> Facturar
+                    </button>
+                </form>
+            }
+
+            @if (Model.Usuario != null)
+            {
+                <a asp-controller="Usuarios"
+                       asp-action="Details"
+                       asp-route-id="@Model.UsuarioId"
+                       class="btn btn-outline-dark">
+                    <i class="bi bi-person"></i> Ver cliente
+                </a>
+            }
+
+            @if (Model.Activa == true)
+            {
+                <form asp-action="Cancelar"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-cancelar">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button" class="btn btn-outline-danger btn-cancelar">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="Reactivar"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-reactivar">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button" class="btn btn-outline-success btn-reactivar">
+                        <i class="bi bi-arrow-clockwise"></i> Reactivar
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-lg-4">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Cliente</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Nombre</span>
+                    <p class="info-value">
+                        @(Model.Usuario != null
+                            ? $"{Model.Usuario.Nombre} {Model.Usuario.Apellidos}"
+                            : "Usuario no disponible")
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Email</span>
+                    <p class="info-value">@(Model.Usuario?.Email ?? "Sin email")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Plan</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Tipo</span>
+                    <p class="info-value">@(Model.TipoSuscripcion?.Nombre ?? "Sin tipo")</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Precio</span>
+                    <p class="info-value">
+                        @(Model.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") €
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Duración</span>
+                    <p class="info-value">
+                        @(Model.TipoSuscripcion?.DuracionDias.ToString() ?? "-") días
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Estado</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Inicio</span>
+                    <p class="info-value">@Model.FechaInicio.ToString("dd/MM/yyyy")</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Fin</span>
+                    <p class="info-value">@Model.FechaFin.ToString("dd/MM/yyyy")</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Estado</span>
+                    <br />
+
+                    @if (Model.Activa == true && !vencida)
+                    {
+                        <span class="badge bg-success">Activa</span>
+                    }
+                    else if (Model.Activa == true && vencida)
+                    {
+                        <span class="badge bg-warning text-dark">Vencida</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Cancelada</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-cancelar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Cancelar suscripción?',
+                    text: 'La suscripción dejará de estar activa.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, cancelar',
+                    cancelButtonText: 'Volver'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-reactivar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Reactivar suscripción?',
+                    text: 'Solo se reactivará si no está vencida y el cliente no tiene otra activa.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, reactivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-facturar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Generar factura?',
+                    text: 'Se creará una factura pendiente para esta suscripción.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, facturar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

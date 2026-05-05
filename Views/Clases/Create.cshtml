@@ -1,0 +1,69 @@
+﻿@model FitControlWeb.ViewModels.ExportButtonsViewModel
+
+@{
+    ViewData["Title"] = "Nueva clase";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <h2 class="page-title">Nueva clase</h2>
+        <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Fecha" class="form-label"></label>
+                <input asp-for="Fecha" type="date" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="HoraInicio" class="form-label"></label>
+                <input asp-for="HoraInicio" type="time" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="HoraFin" class="form-label"></label>
+                <input asp-for="HoraFin" type="time" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="CapacidadMinima" class="form-label"></label>
+                <input asp-for="CapacidadMinima" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="CapacidadMaxima" class="form-label"></label>
+                <input asp-for="CapacidadMaxima" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="EntrenadorId" class="form-label">Entrenador</label>
+                <select asp-for="EntrenadorId" asp-items="ViewBag.Entrenadores" class="form-select"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="EspecialidadId" class="form-label">Especialidad</label>
+                <select asp-for="EspecialidadId" asp-items="ViewBag.Especialidades" class="form-select"></select>
+            </div>
+        </div>
+
+        <button class="btn btn-orange mt-4">Crear clase</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

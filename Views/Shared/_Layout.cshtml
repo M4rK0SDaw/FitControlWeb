@@ -1,0 +1,414 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - FitControl Web</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/LayoutStyle.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/FitControlWeb.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+
+
+@{
+    string? usuarioIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    string? fotoUsuarioUrl = null;
+
+    if (!string.IsNullOrWhiteSpace(usuarioIdClaim))
+    {
+        var extensiones = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+
+        foreach (var ext in extensiones)
+        {
+            var rutaFisica = System.IO.Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "uploads",
+                "usuarios",
+                $"usuario-{usuarioIdClaim}{ext}"
+            );
+
+            if (System.IO.File.Exists(rutaFisica))
+            {
+                fotoUsuarioUrl = $"/uploads/usuarios/usuario-{usuarioIdClaim}{ext}";
+                break;
+            }
+        }
+    }
+
+    var nombreCompleto = User.FindFirst("NombreCompleto")?.Value ?? "U";
+    var inicialUsuario = !string.IsNullOrWhiteSpace(nombreCompleto)
+        ? nombreCompleto.Substring(0, 1).ToUpper()
+        : "U";
+}
+
+<body>
+    @if (User.Identity != null && User.Identity.IsAuthenticated)
+    {
+        <div class="app-shell">
+
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <span>FIT</span><strong>CONTROL</strong>
+                </div>
+
+                <nav class="sidebar-nav">
+                   
+                    @if (User.IsInRole("Administrador"))
+                    {
+                        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link">
+                            Dashboard
+                        </a>
+
+                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link">
+                            Usuarios
+                        </a>
+
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
+                            Clases
+                        </a>
+
+                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link">
+                            Reservas
+                        </a>
+
+                        <a asp-controller="Suscripciones" asp-action="Index" class="sidebar-link">
+                            Suscripciones
+                        </a>
+                        <a asp-controller="Especialidades" asp-action="Index" class="sidebar-link">
+                            Especialidades
+                        </a>
+                        <a asp-controller="TipoSuscripciones" asp-action="Index" class="sidebar-link">
+                            Tipos de suscripción
+                        </a>
+                        <a asp-controller="MetodoPagos" asp-action="Index" class="sidebar-link">
+                            Métodos de pago
+                        </a>
+
+                        <a asp-controller="Facturas" asp-action="Index" class="sidebar-link">
+                            Facturas
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Cliente"))
+                    {
+                        <a asp-controller="ClienteDashboard" asp-action="Index" class="sidebar-link">
+                            Mi panel
+                        </a>
+
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
+                            Clases disponibles
+                        </a>
+
+                        <a asp-controller="Reservas" asp-action="MisReservas" class="sidebar-link">
+                            Mis reservas
+                        </a>
+
+                        <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="sidebar-link">
+                            Mis facturas
+                        </a>
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
+                            Reservar clase
+                        </a>
+
+                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link d-flex justify-content-between align-items-center">
+                            <span>Mensajes</span>
+
+                            <span id="chatSidebarBadge"
+                                  class="badge bg-danger d-none">
+                                0
+                            </span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Entrenador"))
+                    {
+                        <a asp-controller="EntrenadorDashboard" asp-action="Index" class="sidebar-link">
+                            Mi panel
+                        </a>
+
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
+                            Mis clases
+                        </a>
+
+                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link">
+                            Reservas
+                        </a>
+
+                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link d-flex justify-content-between align-items-center">
+                            <span>Mensajes</span>
+
+                            <span id="chatSidebarBadge"
+                                  class="badge bg-danger d-none">
+                                0
+                            </span>
+                        </a>
+                    }
+                    
+                </nav>
+
+                <div class="sidebar-footer">
+                    <small>FitControl Web</small>
+                    <span>© 2026</span>
+                </div>
+            </aside>
+
+            <div class="main-area">
+                <header class="topbar">
+                    <div>
+                        <h5 class="mb-0">@ViewData["Title"]</h5>
+                        <small class="text-muted">Panel de gestión del gimnasio</small>
+                    </div>
+
+                    <div class="user-box">
+
+                        <div class="user-avatar">
+                            @if (!string.IsNullOrWhiteSpace(fotoUsuarioUrl))
+                            {
+                                <img src="@fotoUsuarioUrl"
+                                     alt="Foto de perfil"
+                                     class="user-avatar-img" />
+                            }
+                            else
+                            {
+                                @inicialUsuario
+                            }
+                        </div>
+
+
+                        <div class="user-info">
+                            <span>@User.FindFirst("NombreCompleto")?.Value</span>
+                            <small>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</small>
+                        </div>
+
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-logout" type="submit">
+                                Salir
+                            </button>
+                        </form>
+                    </div>
+                </header>
+
+                <main class="content-area">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="container mt-3">
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle me-2"></i>
+                                @TempData["Success"]
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="container mt-3">
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                @TempData["Error"]
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        </div>
+                    }
+                    @RenderBody()
+                </main>
+            </div>
+        </div>
+    }
+    else
+    {
+        <main>
+            @RenderBody()
+        </main>
+    }
+
+    @if (User.Identity?.IsAuthenticated == true &&
+                        (User.IsInRole("Cliente") || User.IsInRole("Entrenador")))
+    {
+        <button class="btn btn-orange chat-float-btn position-relative"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#chatOffcanvas"
+                aria-controls="chatOffcanvas"
+                id="btnAbrirChat">
+            <i class="bi bi-chat-dots-fill"></i>
+
+            <span id="chatUnreadBadge"
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                0
+            </span>
+        </button>
+
+        <div class="offcanvas offcanvas-end chat-offcanvas"
+             tabindex="-1"
+             id="chatOffcanvas"
+             aria-labelledby="chatOffcanvasLabel">
+
+            <div class="offcanvas-header border-bottom">
+                <h5 class="offcanvas-title" id="chatOffcanvasLabel">
+                    FitControl Chat
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="offcanvas"
+                        aria-label="Cerrar"></button>
+            </div>
+
+            <div class="offcanvas-body" id="chatContainer">
+                <div class="text-muted">
+                    Cargando conversaciones...
+                </div>
+            </div>
+        </div>
+    }
+    
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        async function cargarChatPanel() {
+        const container = document.getElementById('chatContainer');
+
+        if (!container) return;
+
+        container.innerHTML = '<div class="text-muted">Cargando conversaciones...</div>';
+
+        const response = await fetch('/Mensajes/ChatPanel');
+
+        if (!response.ok) {
+        container.innerHTML = '<div class="alert alert-danger">Error al cargar el chat.</div>';
+        return;
+        }
+
+        container.innerHTML = await response.text();
+        inicializarChatEventos();
+        }
+
+        async function cargarConversacion(usuarioId) {
+        const container = document.getElementById('chatContainer');
+
+        container.innerHTML = '<div class="text-muted">Cargando conversación...</div>';
+
+        const response = await fetch(`/Mensajes/ChatConversacion?usuarioId=${usuarioId}`);
+
+        if (!response.ok) {
+        container.innerHTML = '<div class="alert alert-danger">No se pudo cargar la conversación.</div>';
+        return;
+        }
+
+        container.innerHTML = await response.text();
+
+        const chatBox = document.getElementById('chatBoxPopup');
+        if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        inicializarChatEventos();
+        }
+
+        function inicializarChatEventos() {
+        document.querySelectorAll('.chat-conversation-item').forEach(button => {
+        button.addEventListener('click', function () {
+        const userId = this.dataset.userId;
+        cargarConversacion(userId);
+        });
+        });
+
+        const btnVolver = document.getElementById('btnVolverChat');
+        if (btnVolver) {
+        btnVolver.addEventListener('click', function () {
+        cargarChatPanel();
+        });
+        }
+
+        const form = document.getElementById('chatEnviarForm');
+        if (form) {
+        form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+
+        const response = await fetch('/Mensajes/EnviarAjax', {
+        method: 'POST',
+        body: formData
+        });
+
+        if (!response.ok) {
+        Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo enviar el mensaje.'
+        });
+
+        return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+        cargarConversacion(data.usuarioId);
+        actualizarContadorMensajes();
+        }
+        });
+        }
+        }
+
+        const chatOffcanvas = document.getElementById('chatOffcanvas');
+
+        if (chatOffcanvas) {
+        chatOffcanvas.addEventListener('shown.bs.offcanvas', async function () {
+        await cargarChatPanel();
+        actualizarContadorMensajes();
+        });
+        }
+    
+        async function actualizarContadorMensajes() {
+        const badgeFloat = document.getElementById('chatUnreadBadge');
+        const badgeSidebar = document.getElementById('chatSidebarBadge');
+
+        if (!badgeFloat && !badgeSidebar) return;
+
+        try {
+        const response = await fetch('/Mensajes/NoLeidos');
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const total = data.total ?? 0;
+
+        [badgeFloat, badgeSidebar].forEach(badge => {
+        if (!badge) return;
+
+        if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.classList.remove('d-none');
+        } else {
+        badge.textContent = '0';
+        badge.classList.add('d-none');
+        }
+        });
+        } catch {
+        // Silencioso para no molestar al usuario
+        }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+        actualizarContadorMensajes();
+
+        setInterval(actualizarContadorMensajes, 15000);
+        });
+    </script>
+
+</body>
+</html>

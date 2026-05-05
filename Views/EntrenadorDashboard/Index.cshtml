@@ -1,0 +1,276 @@
+﻿@model FitControlWeb.ViewModels.Dashboard.EntrenadorDashboardViewModel
+
+@{
+    ViewData["Title"] = "Panel entrenador";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Panel del entrenador</h2>
+            <p class="text-muted mb-0">
+                Bienvenido, @Model.Entrenador?.Nombre @Model.Entrenador?.Apellidos
+            </p>
+        </div>
+        @* 
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">
+                <i class="bi bi-calendar-event"></i> Mis clases
+            </a>
+
+            <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-primary">
+                <i class="bi bi-journal-check"></i> Reservas
+            </a>
+        </div> *@
+
+        <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="btn btn-outline-dark">
+            <i class="bi bi-person-circle"></i> Mi perfil
+        </a>
+
+        <a asp-controller="Mensajes" asp-action="Index" class="btn btn-outline-dark">
+            <i class="bi bi-chat-dots"></i> Mensajes
+        </a>
+
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Mis clases</span>
+                <p class="info-value mb-0">@Model.TotalClases</p>
+                <small class="text-muted">Clases activas</small>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Clases hoy</span>
+                <p class="info-value mb-0">@Model.ClasesHoy</p>
+                <small class="text-muted">Programadas para hoy</small>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Próximas clases</span>
+                <p class="info-value mb-0">@Model.ProximasClases</p>
+                <small class="text-muted">Desde hoy en adelante</small>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Ocupación media</span>
+                <p class="info-value mb-0">@Model.OcupacionMedia %</p>
+                <small class="text-muted">@Model.PlazasOcupadas / @Model.PlazasTotales plazas</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-lg-6">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-calendar-day text-primary me-1"></i>
+                    Clases de hoy
+                </h5>
+
+                @if (!Model.ClasesDeHoy.Any())
+                {
+                    <div class="alert alert-info mb-0">
+                        No tienes clases hoy.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-modern align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Clase</th>
+                                    <th>Hora</th>
+                                    <th>Reservas</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var c in Model.ClasesDeHoy)
+                                {
+                                    var ocupadas = c.Reservas.Count(r => r.Activo == true);
+                                    var capacidad = c.CapacidadMaxima ?? 0;
+
+                                    <tr>
+                                        <td>
+                                            <strong>@c.Nombre</strong>
+                                            <br />
+                                            <small class="text-muted">@c.Especialidad?.Nombre</small>
+                                        </td>
+
+                                        <td>@c.HoraInicio - @c.HoraFin</td>
+
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                @ocupadas / @capacidad
+                                            </span>
+                                        </td>
+
+                                        <td class="text-end">
+                                            <a asp-controller="Reservas"
+                                                   asp-action="PorClase"
+                                                   asp-route-claseId="@c.Id"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                Ver reservas
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-calendar-week text-success me-1"></i>
+                    Próximas clases
+                </h5>
+
+                @if (!Model.ProximasClasesListado.Any())
+                {
+                    <div class="alert alert-info mb-0">
+                        No tienes próximas clases.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-modern align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Clase</th>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Ocupación</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var c in Model.ProximasClasesListado)
+                                {
+                                    var ocupadas = c.Reservas.Count(r => r.Activo == true);
+                                    var capacidad = c.CapacidadMaxima ?? 0;
+                                    var completa = capacidad > 0 && ocupadas >= capacidad;
+
+                                    <tr>
+                                        <td>
+                                            <strong>@c.Nombre</strong>
+                                            <br />
+                                            <small class="text-muted">@c.Especialidad?.Nombre</small>
+                                        </td>
+
+                                        <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
+
+                                        <td>@c.HoraInicio - @c.HoraFin</td>
+
+                                        <td>
+                                            <span class="badge @(completa ? "bg-danger" : "bg-success")">
+                                                @ocupadas / @capacidad
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-12">
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-clock-history text-warning me-1"></i>
+                    Últimas reservas en mis clases
+                </h5>
+
+                @if (!Model.UltimasReservas.Any())
+                {
+                    <div class="alert alert-info mb-0">
+                        Todavía no hay reservas en tus clases.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-modern align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Clase</th>
+                                    <th>Fecha reserva</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var r in Model.UltimasReservas)
+                                {
+                                    <tr>
+                                        <td>
+                                            @r.Usuario?.Nombre @r.Usuario?.Apellidos
+                                            <br />
+                                            <small class="text-muted">@r.Usuario?.Email</small>
+                                        </td>
+
+                                        <td>
+                                            @r.Clase?.Nombre
+                                            <br />
+                                            <small class="text-muted">@r.Clase?.Especialidad?.Nombre</small>
+                                        </td>
+
+                                        <td>@r.FechaReserva?.ToString("dd/MM/yyyy HH:mm")</td>
+
+                                        <td>
+                                            @if (r.Activo == true)
+                                            {
+                                                <span class="badge bg-success">Activa</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Cancelada</span>
+                                            }
+                                        </td>
+
+                                        <td class="text-end">
+                                            @if (r.Clase != null)
+                                            {
+                                                <a asp-controller="Reservas"
+                                                       asp-action="PorClase"
+                                                       asp-route-claseId="@r.Clase.Id"
+                                                       class="btn btn-sm btn-outline-dark">
+                                                    Ver clase
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>

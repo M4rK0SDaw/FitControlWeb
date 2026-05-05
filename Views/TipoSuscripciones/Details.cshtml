@@ -1,0 +1,127 @@
+﻿@model FitControlWeb.Models.Entities.TipoSuscripcion
+
+@{
+    ViewData["Title"] = "Detalle tipo de suscripción";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">@Model.Nombre</h2>
+            <p class="text-muted mb-0">Información completa del tipo de suscripción</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-orange">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+
+            @if (Model.Activo == true)
+            {
+                <form asp-action="Desactivar"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-desactivar">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@Url.Action("Index", "TipoSuscripciones")" />
+
+                    <button type="button" class="btn btn-outline-danger btn-desactivar">
+                        <i class="bi bi-x-circle"></i> Desactivar
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="Activar"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-activar">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                    <button type="button" class="btn btn-outline-success btn-activar">
+                        <i class="bi bi-arrow-clockwise"></i> Activar
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h5 class="fw-bold mb-3">Datos</h5>
+
+        <div class="row g-3">
+            <div class="col-md-3">
+                <span class="info-label">Nombre</span>
+                <p class="info-value">@Model.Nombre</p>
+            </div>
+
+            <div class="col-md-3">
+                <span class="info-label">Precio</span>
+                <p class="info-value">@Model.Precio.ToString("0.00") €</p>
+            </div>
+
+            <div class="col-md-3">
+                <span class="info-label">Duración</span>
+                <p class="info-value">@Model.DuracionDias días</p>
+            </div>
+
+            <div class="col-md-3">
+                <span class="info-label">Estado</span>
+                <br />
+                <span class="badge @(Model.Activo == true ? "bg-success" : "bg-danger")">
+                    @(Model.Activo == true ? "Activo" : "Inactivo")
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-desactivar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Desactivar tipo?',
+                    text: 'El tipo dejará de estar disponible para nuevas suscripciones.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, desactivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) form.submit();
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-activar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Activar tipo?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, activar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) form.submit();
+                });
+            });
+        });
+    </script>
+}

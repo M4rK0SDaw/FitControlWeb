@@ -1,0 +1,98 @@
+﻿@model FitControlWeb.Models.Entities.MetodoPago
+
+@{
+    ViewData["Title"] = "Detalle método de pago";
+
+    int totalPagos = Model.Pagos?.Count ?? 0;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">@Model.Nombre</h2>
+            <p class="text-muted mb-0">Información del método de pago</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            <a asp-action="Edit"
+                   asp-route-id="@Model.Id"
+                   class="btn btn-orange">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+
+            <form asp-action="Delete"
+                  asp-route-id="@Model.Id"
+                  method="post"
+                  class="d-inline form-delete">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@Url.Action("Index", "MetodoPagos")" />
+
+                <button type="button" class="btn btn-outline-danger btn-delete">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Datos</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Nombre</span>
+                    <p class="info-value">@Model.Nombre</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Pagos asociados</span>
+                    <p class="info-value">@totalPagos</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Aviso</h5>
+
+                <p class="text-muted mb-0">
+                    Este método solo se puede eliminar si no tiene pagos asociados.
+                    Si ya fue usado en pagos, se mantendrá para conservar el historial.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Eliminar método de pago?',
+                    text: 'Solo se eliminará si no tiene pagos asociados.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

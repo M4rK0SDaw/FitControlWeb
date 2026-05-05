@@ -1,0 +1,109 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Conversacion>
+
+@{
+    ViewData["Title"] = "Mensajes";
+
+    int usuarioActualId = ViewBag.UsuarioActualId;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Mensajes</h2>
+            <p class="text-muted mb-0">Comunicación entre clientes y entrenadores</p>
+        </div>
+
+        <a asp-action="Nueva" class="btn btn-orange">
+            <i class="bi bi-plus-circle"></i> Nueva conversación
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Todavía no tienes conversaciones.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-modern align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Último mensaje</th>
+                        <th>No leídos</th>
+                        <th class="text-end">Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        var otroUsuario = c.Usuario1Id == usuarioActualId ? c.Usuario2 : c.Usuario1;
+
+                        var ultimoMensaje = c.Mensajes
+                            .OrderByDescending(m => m.FechaEnvio)
+                            .FirstOrDefault();
+
+                        var noLeidos = c.Mensajes
+                            .Count(m => m.RemitenteId != usuarioActualId && m.Leido != true);
+
+                        <tr>
+                            <td>
+                                <strong>@otroUsuario.Nombre @otroUsuario.Apellidos</strong>
+                                <br />
+                                <small class="text-muted">@otroUsuario.Email</small>
+                            </td>
+
+                            <td>
+                                @if (ultimoMensaje == null)
+                                {
+                                    <span class="text-muted">Sin mensajes todavía</span>
+                                }
+                                else
+                                {
+                                    var texto = ultimoMensaje.Contenido.Length > 80
+                                        ? ultimoMensaje.Contenido.Substring(0, 80) + "..."
+                                        : ultimoMensaje.Contenido;
+
+                                    <span>@texto</span>
+                                    <br />
+                                    <small class="text-muted">
+                                        @ultimoMensaje.FechaEnvio
+                                        @* @ultimoMensaje.FechaEnvio.ToString("dd/MM/yyyy HH:mm") *@
+                                    </small>
+                                }
+                            </td>
+
+                            <td>
+                                @if (noLeidos > 0)
+                                {
+                                    <span class="badge bg-danger">@noLeidos</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">0</span>
+                                }
+                            </td>
+
+                            <td class="text-end">
+                                <a asp-action="Conversacion"
+                                       asp-route-usuarioId="@otroUsuario.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-chat-dots"></i> Abrir
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>

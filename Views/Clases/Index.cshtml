@@ -1,0 +1,389 @@
+﻿@model IEnumerable<FitControlWeb.ViewModels.ClaseListViewModel>
+@using FitControlWeb.ViewModels.Shared
+
+@{
+    ViewData["Title"] = "Clases";
+
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int pageSize = ViewBag.PageSize ?? 10;
+
+    int startPage = Math.Max(1, currentPage - 2);
+    int endPage = Math.Min(totalPages, currentPage + 2);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">
+                @(User.IsInRole("Cliente") ? "Clases disponibles" : "Todas las clases")
+            </h2>
+            <p class="text-muted mb-0">
+                @(User.IsInRole("Cliente")
+                    ? "Consulta clases y reserva si tienes suscripción activa"
+                    : "Gestión global de clases del gimnasio")
+            </p>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            @if (User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+            {
+                
+                var exportModel = new ExportButtonsViewModel
+                {
+                    Controller = "Clases",
+                    ExcelAction = "ExportExcel",
+                    CsvAction = "ExportCsv",
+                    PdfAction = "ExportPdf",
+                    RouteValues = new Dictionary<string, string?>
+                    {
+                        { "search", ViewBag.Search?.ToString() },
+                        { "entrenadorId", ViewBag.EntrenadorId?.ToString() },
+                        { "especialidadId", ViewBag.EspecialidadId?.ToString() }
+                    }
+                };
+                
+
+                <partial name="_ExportButtons" model="exportModel" />
+            }
+
+       
+            @if (User.IsInRole("Administrador"))
+            {
+                <a asp-action="Create" class="btn btn-orange">
+                    <i class="bi bi-plus-lg me-1"></i> Nueva Clase
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="filter-box mb-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Buscar</label>
+                <input type="text"
+                       name="search"
+                       value="@ViewBag.Search"
+                       class="form-control"
+                       placeholder="Nombre de clase..." />
+            </div>
+
+            @if (!User.IsInRole("Entrenador"))
+            {
+                <div class="col-md-3">
+                    <label class="form-label">Entrenador</label>
+                    <select name="entrenadorId" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach (var item in ViewBag.Entrenadores)
+                        {
+                            <option value="@item.Value"
+                                    selected="@(ViewBag.EntrenadorId != null && ViewBag.EntrenadorId.ToString() == item.Value)">
+                                @item.Text
+                            </option>
+                        }
+                    </select>
+                </div>
+            }
+
+            @* <div class="col-md-3">
+                <label class="form-label">Entrenador</label>
+                <select name="entrenadorId" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach (var item in ViewBag.Entrenadores)
+                    {
+                        <option value="@item.Value"
+                                selected="@(ViewBag.EntrenadorId != null && ViewBag.EntrenadorId.ToString() == item.Value)">
+                            @item.Text
+                        </option>
+                    }
+                </select>
+            </div> *@
+
+            <div class="col-md-3">
+                <label class="form-label">Especialidad</label>
+                <select name="especialidadId" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var item in ViewBag.Especialidades)
+                    {
+                        <option value="@item.Value"
+                                selected="@(ViewBag.EspecialidadId != null && ViewBag.EspecialidadId.ToString() == item.Value)">
+                            @item.Text
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-orange w-100">
+                    <i class="bi bi-search me-1"></i> Buscar
+                </button>
+
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-modern">
+            <thead class="table-dark">
+                <tr>
+                    <th>Clase</th>
+                    <th>Especialidad</th>
+                    <th>Fecha</th>
+                    <th>Horario</th>
+                    <th>Entrenador</th>
+                    <th>Capacidad</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                            No hay clases con los filtros seleccionados.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var c in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@c.Nombre</strong>
+                            </td>
+
+                            <td>
+                                <span class="badge bg-warning text-dark">
+                                    @c.Especialidad
+                                </span>
+                            </td>
+
+                            <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
+
+                            <td>
+                                <i class="bi bi-clock me-1 text-muted"></i>
+                                @c.HoraInicio - @c.HoraFin
+                            </td>
+
+                            <td>@c.Entrenador</td>
+
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    @c.PlazasOcupadas / @c.CapacidadMaxima plazas
+                                </span>
+                            </td>
+
+                            <td>
+                                @if (c.EsPasada)
+                                {
+                                    <span class="badge bg-secondary">Finalizada</span>
+                                }
+                                else if (c.Completa)
+                                {
+                                    <span class="badge bg-danger">Completa</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Disponible</span>
+                                }
+                            </td>
+
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a asp-action="Details"
+                                           asp-route-id="@c.Id"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+
+                                    @if (User.IsInRole("Administrador"))
+                                    {
+                                        <a asp-action="Edit"
+                                               asp-route-id="@c.Id"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Editar">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+
+                                        <form asp-action="Delete"
+                                              asp-route-id="@c.Id"
+                                              method="post"
+                                              class="d-inline delete-form">
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger btn-delete"
+                                                    title="Eliminar">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+
+                                    @if (User.IsInRole("Cliente"))
+                                    {
+                                        if (c.EsPasada)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" disabled>
+                                                <i class="bi bi-lock"></i> Finalizada
+                                            </button>
+                                        }
+                                        else if (!c.ClienteTieneSuscripcionActiva)
+                                        {
+                                            <button class="btn btn-sm btn-outline-warning" disabled>
+                                                <i class="bi bi-exclamation-circle"></i> Necesitas suscripción
+                                            </button>
+                                        }
+                                        else if (c.YaReservada)
+                                        {
+                                            <button class="btn btn-sm btn-outline-info" disabled>
+                                                <i class="bi bi-check-circle"></i> Ya reservada
+                                            </button>
+                                        }
+                                        else if (c.Completa)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger" disabled>
+                                                <i class="bi bi-people-fill"></i> Completa
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <form asp-controller="Reservas"
+                                                  asp-action="Reservar"
+                                                  method="post"
+                                                  class="d-inline">
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden" name="claseId" value="@c.Id" />
+                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                                <button type="submit" class="btn btn-sm btn-orange" title="Reservar">
+                                                    <i class="bi bi-calendar-check"></i> Reservar
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+            <span class="text-muted small">
+                Página @currentPage de @totalPages
+            </span>
+
+            <nav>
+                <ul class="pagination mb-0">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-entrenadorId="@ViewBag.EntrenadorId"
+                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage - 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-entrenadorId="@ViewBag.EntrenadorId"
+                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search"
+                                   asp-route-entrenadorId="@ViewBag.EntrenadorId"
+                                   asp-route-especialidadId="@ViewBag.EspecialidadId">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage + 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-entrenadorId="@ViewBag.EntrenadorId"
+                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@totalPages"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-entrenadorId="@ViewBag.EntrenadorId"
+                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Dar de baja esta clase?',
+                    text: 'La clase no se borrará físicamente, quedará inactiva.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, dar de baja',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,62 @@
+﻿@model FitControlWeb.Models.ErrorViewModel
+
+@{
+    ViewData["Title"] = "Error inesperado";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="text-center py-5">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+
+        <h2 class="page-title mt-3">Ha ocurrido un error inesperado</h2>
+
+        <p class="text-muted mb-4">
+            No te preocupes, la aplicación sigue funcionando. Vuelve atrás o regresa al panel principal.
+        </p>
+
+        @if (Model.ShowRequestId)
+        {
+            <div class="alert alert-light border d-inline-block">
+                <strong>ID del error:</strong> @Model.RequestId
+            </div>
+        }
+
+        <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                <i class="bi bi-arrow-left"></i> Volver atrás
+            </button>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                if (User.IsInRole("Administrador"))
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-orange">
+                        Ir al dashboard
+                    </a>
+                }
+                else if (User.IsInRole("Cliente"))
+                {
+                    <a asp-controller="ClienteDashboard" asp-action="Index" class="btn btn-orange">
+                        Ir a mi panel
+                    </a>
+                }
+                else if (User.IsInRole("Entrenador"))
+                {
+                    <a asp-controller="EntrenadorDashboard" asp-action="Index" class="btn btn-orange">
+                        Ir a mi panel
+                    </a>
+                }
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-orange">
+                    Ir al login
+                </a>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,236 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.MetodoPago>
+
+@{
+    ViewData["Title"] = "Métodos de pago";
+
+    var metodos = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.MetodoPago>();
+
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int pageSize = ViewBag.PageSize ?? 10;
+    int totalMetodos = ViewBag.TotalMetodos ?? 0;
+
+    int startPage = Math.Max(1, currentPage - 2);
+    int endPage = Math.Min(totalPages, currentPage + 2);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Métodos de pago</h2>
+            <p class="text-muted mb-0">Gestión de formas de pago disponibles</p>
+        </div>
+
+        <a asp-action="Create" class="btn btn-orange">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo método
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="info-box">
+                <span class="info-label">Métodos encontrados</span>
+                <p class="info-value mb-0">@totalMetodos</p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <span class="info-label">En esta página</span>
+                <p class="info-value mb-0">@metodos.Count</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-box mb-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Buscar</label>
+                <input type="text"
+                       name="search"
+                       value="@ViewBag.Search"
+                       class="form-control"
+                       placeholder="Ej: Efectivo, Bizum, Tarjeta..." />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Ver</label>
+                <select name="pageSize" class="form-select">
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="25" selected="@(pageSize == 25)">25</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                </select>
+            </div>
+
+            <div class="col-md-4 d-flex gap-2">
+                <button class="btn btn-orange w-100">
+                    <i class="bi bi-search me-1"></i> Filtrar
+                </button>
+
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    @if (!metodos.Any())
+    {
+        <div class="alert alert-info">
+            No hay métodos de pago con los filtros seleccionados.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-modern align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nombre</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var m in metodos)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@m.Nombre</td>
+
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a asp-action="Details"
+                                           asp-route-id="@m.Id"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+
+                                    <a asp-action="Edit"
+                                           asp-route-id="@m.Id"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+
+                                    <form asp-action="Delete"
+                                          asp-route-id="@m.Id"
+                                          method="post"
+                                          class="d-inline form-delete">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-delete"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+
+                <span class="text-muted small">
+                    Página @currentPage de @totalPages
+                </span>
+
+                <nav>
+                    <ul class="pagination mb-0">
+
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@(currentPage - 1)"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        @for (int i = startPage; i <= endPage; i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                       asp-action="Index"
+                                       asp-route-page="@i"
+                                       asp-route-pageSize="@pageSize"
+                                       asp-route-search="@ViewBag.Search">
+                                    @i
+                                </a>
+                            </li>
+                        }
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@(currentPage + 1)"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@totalPages"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Eliminar método de pago?',
+                    text: 'Solo se podrá eliminar si no tiene pagos asociados.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

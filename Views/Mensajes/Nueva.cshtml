@@ -1,0 +1,51 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Usuario>
+
+@{
+    ViewData["Title"] = "Nueva conversación";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Nueva conversación</h2>
+            <p class="text-muted mb-0">Selecciona con quién quieres hablar</p>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            No hay usuarios disponibles para iniciar conversación.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var u in Model)
+            {
+                <div class="col-md-4">
+                    <div class="info-box h-100">
+                        <h5 class="fw-bold mb-1">@u.Nombre @u.Apellidos</h5>
+                        <p class="text-muted mb-3">@u.Email</p>
+
+                        <a asp-action="Conversacion"
+                               asp-route-usuarioId="@u.Id"
+                               class="btn btn-orange w-100">
+                            <i class="bi bi-chat-dots"></i> Abrir conversación
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>

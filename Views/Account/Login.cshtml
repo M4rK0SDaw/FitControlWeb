@@ -1,0 +1,113 @@
+﻿@model FitControlWeb.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/LoginStyle.css" asp-append-version="true" />
+}
+
+<div class="login-page-wrapper d-flex flex-column flex-lg-row min-vh-100">
+
+    <div class="brand-panel d-none d-lg-flex col-lg-7 flex-column justify-content-between p-5 text-white">
+        <div class="brand-logo">
+            <h2 class="fw-bold text-uppercase">
+                FIT<span class="text-gym-orange">CONTROL</span>
+            </h2>
+        </div>
+
+        <div class="motivational-content">
+            <h1 class="display-3 fw-bold mb-3 text-uppercase">
+                Potencia <br />tu entrenamiento
+            </h1>
+
+            <p class="lead opacity-75">
+                Gestiona tus clases, reservas y progreso desde una sola plataforma.
+            </p>
+        </div>
+
+        <div class="brand-footer d-flex gap-4">
+            <span class="small opacity-75">
+                © 2026 FitControl Web. Todos los derechos reservados.
+            </span>
+        </div>
+    </div>
+
+    <div class="auth-panel col-12 col-lg-5 d-flex align-items-center justify-content-center px-4 py-5">
+        <div class="login-card p-4 p-md-5 w-100">
+
+            <div class="text-center mb-5">
+                <h3 class="fw-bold text-uppercase">Bienvenido</h3>
+                <p class="text-muted small">
+                    Ingresa tus credenciales para acceder a tu panel
+                </p>
+            </div>
+
+            <form asp-controller="Account" asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="mb-4">
+                    <label asp-for="Email" class="form-label text-muted">
+                        Correo electrónico
+                    </label>
+
+                    <input asp-for="Email"
+                           class="form-control form-control-lg"
+                           placeholder="atleta@fitcontrol.com" />
+
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between">
+                        <label asp-for="Password" class="form-label text-muted">
+                            Contraseña
+                        </label>
+
+                        <a href="#" class="text-gym-orange small text-decoration-none">
+                            ¿Olvidaste tu contraseña?
+                        </a>
+                    </div>
+
+                    <input asp-for="Password"
+                           type="password"
+                           class="form-control form-control-lg"
+                           placeholder="••••••••" />
+
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <div class="form-check">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label text-muted">
+                            Recordarme
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-gym-orange btn-lg w-100 fw-bold py-3 text-uppercase">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-5 text-center">
+                <p class="text-muted small">
+                    ¿No tienes cuenta?
+                    <a asp-controller="Account" asp-action="Register"
+                           class="text-gym-orange fw-bold text-decoration-none">
+                        Crear cuenta
+                    </a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

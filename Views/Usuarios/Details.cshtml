@@ -1,0 +1,214 @@
+﻿@model FitControlWeb.Models.Entities.Usuario
+
+@{
+    ViewData["Title"] = "Detalle de usuario";
+
+    var extensiones = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+    string? fotoUrl = null;
+
+    foreach (var ext in extensiones)
+    {
+        var rutaFisica = System.IO.Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "uploads",
+            "usuarios",
+            $"usuario-{Model.Id}{ext}"
+        );
+
+        if (System.IO.File.Exists(rutaFisica))
+        {
+            fotoUrl = $"/uploads/usuarios/usuario-{Model.Id}{ext}";
+            break;
+        }
+    }
+
+    fotoUrl ??= "/img/default-user.png";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">@Model.Nombre @Model.Apellidos</h2>
+            <p class="text-muted mb-0">Información completa del usuario</p>
+            
+            @if (Model.Rol?.Nombre == "Cliente")
+            {
+                <a asp-controller="Reservas"
+                       asp-action="Index"
+                       asp-route-search="@Model.Email"
+                       class="btn btn-outline-primary">
+                    <i class="bi bi-calendar-check"></i> Ver reservas
+                </a>
+            }
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            <a asp-action="Edit"
+                   asp-route-id="@Model.Id"
+                   class="btn btn-orange">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+
+            @if (Model.Activo == true)
+            {
+                <form asp-action="Delete"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-delete">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button" class="btn btn-outline-danger btn-delete">
+                        <i class="bi bi-x-circle"></i> Dar de baja
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="Reactivar"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-reactivar">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button" class="btn btn-outline-success btn-reactivar">
+                        <i class="bi bi-arrow-clockwise"></i> Reactivar
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-lg-4">
+            <div class="info-box text-center h-100">
+                <img src="@fotoUrl"
+                     alt="Foto de usuario"
+                     class="rounded-circle mb-3"
+                     style="width: 150px; height: 150px; object-fit: cover;" />
+
+                <h5 class="fw-bold mb-1">@Model.Nombre @Model.Apellidos</h5>
+
+                <p class="text-muted mb-3">@Model.Email</p>
+
+                @if (Model.Activo == true)
+                {
+                    <span class="badge bg-success">Activo</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Inactivo</span>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Datos personales</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Nombre completo</span>
+                    <p class="info-value">@Model.Nombre @Model.Apellidos</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Email</span>
+                    <p class="info-value">@Model.Email</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Teléfono</span>
+                    <p class="info-value">@(string.IsNullOrWhiteSpace(Model.Telefono) ? "Sin teléfono" : Model.Telefono)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="info-box h-100">
+                <h5 class="fw-bold mb-3">Información del sistema</h5>
+
+                <div class="mb-3">
+                    <span class="info-label">Rol</span>
+                    <p class="info-value">@(Model.Rol?.Nombre ?? "Sin rol")</p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Fecha registro</span>
+                    <p class="info-value">
+                        @(Model.FechaRegistro?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="info-label">Bloqueado</span>
+                    <br />
+                    @if (Model.Bloqueado == true)
+                    {
+                        <span class="badge bg-danger">Sí</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">No</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Dar de baja usuario?',
+                    text: 'El usuario quedará inactivo.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, dar de baja',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-reactivar').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Reactivar usuario?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, reactivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

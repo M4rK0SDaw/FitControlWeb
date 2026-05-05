@@ -1,0 +1,353 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Reserva>
+
+@{
+    ViewData["Title"] = "Reservas";
+
+    var reservas = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.Reserva>();
+
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int pageSize = ViewBag.PageSize ?? 10;
+    int totalReservas = ViewBag.TotalReservas ?? 0;
+    int PlazasCanceladas = ViewBag.PlazasCanceladas ?? 0;
+
+    int startPage = Math.Max(1, currentPage - 2);
+    int endPage = Math.Min(totalPages, currentPage + 2);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="row g-3 mb-4">
+
+    <!-- TOTAL -->
+    <div class="col-md-4">
+        <div class="info-box d-flex align-items-center gap-3">
+            <div class="kpi-icon bg-primary">
+                <i class="bi bi-collection"></i>
+            </div>
+            <div>
+                <span class="info-label">Total reservas</span>
+                <p class="info-value mb-0">@totalReservas</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIVAS -->
+    <div class="col-md-4">
+        <div class="info-box d-flex align-items-center gap-3">
+            <div class="kpi-icon bg-success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <span class="info-label">Activas</span>
+                <p class="info-value mb-0">@(totalReservas - PlazasCanceladas)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CANCELADAS -->
+    <div class="col-md-4">
+        <div class="info-box d-flex align-items-center gap-3">
+            <div class="kpi-icon bg-danger">
+                <i class="bi bi-x-circle"></i>
+            </div>
+            <div>
+                <span class="info-label">Canceladas</span>
+                <p class="info-value mb-0">@PlazasCanceladas</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+<div class="filter-box mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Buscar</label>
+            <input type="text"
+                   name="search"
+                   value="@ViewBag.Search"
+                   class="form-control"
+                   placeholder="Cliente, email o clase..." />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                <option value="Activa" selected="@(ViewBag.Estado == "Activa")">Activas</option>
+                <option value="Cancelada" selected="@(ViewBag.Estado == "Cancelada")">Canceladas</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Ver</label>
+            <select name="pageSize" class="form-select">
+                <option value="10" selected="@(pageSize == 10)">10</option>
+                <option value="25" selected="@(pageSize == 25)">25</option>
+                <option value="50" selected="@(pageSize == 50)">50</option>
+            </select>
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-orange w-100">
+                <i class="bi bi-search me-1"></i> Filtrar
+            </button>
+
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </div>
+    </form>
+</div>
+<div>
+
+@if (!reservas.Any())
+{
+    <div class="alert alert-info">
+        No hay reservas con los filtros seleccionados.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover table-modern align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Clase</th>
+                    <th>Fecha clase</th>
+                    <th>Horario</th>
+                    <th>Fecha reserva</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var r in reservas)
+                {
+                    <tr>
+                        <td>
+                            @(r.Usuario != null
+                                ? $"{r.Usuario.Nombre} {r.Usuario.Apellidos}"
+                                : "Usuario no disponible")
+                        </td>
+
+                        <td>@(r.Usuario?.Email ?? "Sin email")</td>
+
+                        <td>@(r.Clase?.Nombre ?? "Sin clase")</td>
+
+                        <td>@(r.Clase != null ? r.Clase.Fecha.ToString("dd/MM/yyyy") : "-")</td>
+
+                        <td>
+                            @if (r.Clase != null)
+                            {
+                                <span>
+                                    <i class="bi bi-clock me-1 text-muted"></i>
+                                    @r.Clase.HoraInicio - @r.Clase.HoraFin
+                                </span>
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </td>
+
+                        <td>@r.FechaReserva?.ToString("dd/MM/yyyy HH:mm")</td>
+
+                        <td>
+                            <span class="badge @(r.Activo == true ? "bg-success" : "bg-danger")">
+                                @(r.EstadoReserva?.Nombre ?? (r.Activo == true ? "Activa" : "Cancelada"))
+                            </span>
+                        </td>
+
+                        <td class="text-end">
+                            <div class="btn-group">
+                                @if (r.Usuario != null)
+                                {
+                                    <a asp-controller="Usuarios"
+                                           asp-action="Details"
+                                           asp-route-id="@r.UsuarioId"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver usuario">
+                                        <i class="bi bi-person"></i>
+                                    </a>
+                                }
+
+                                @if (r.Clase != null)
+                                {
+                                    <a asp-controller="Clases"
+                                           asp-action="Details"
+                                           asp-route-id="@r.ClaseId"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Ver clase">
+                                        <i class="bi bi-calendar-event"></i>
+                                    </a>
+                                }
+
+                                @if (r.Activo == true)
+                                {
+                                    <form asp-controller="Reservas"
+                                          asp-action="CancelarReservaClase"
+                                          asp-route-id="@r.Id"
+                                          method="post"
+                                          class="d-inline cancel-form">
+                                        @Html.AntiForgeryToken()
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-cancel-reserva"
+                                                title="Cancelar reserva">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-controller="Reservas"
+                                          asp-action="ReactivarReservaClase"
+                                          asp-route-id="@r.Id"
+                                          method="post"
+                                          class="d-inline reactivate-form">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-success btn-reactivar-reserva">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
+
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+            <span class="text-muted small">
+                Página @currentPage de @totalPages
+            </span>
+
+            <nav>
+                <ul class="pagination mb-0">
+
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-estado="@ViewBag.Estado">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage - 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-estado="@ViewBag.Estado">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-search="@ViewBag.Search"
+                                   asp-route-estado="@ViewBag.Estado">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage + 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-estado="@ViewBag.Estado">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@totalPages"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-estado="@ViewBag.Estado">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+        </div>
+    }
+}
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-cancel-reserva').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Cancelar reserva?',
+                    text: 'Solo se cancelará esta reserva. La clase seguirá activa.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, cancelar',
+                    cancelButtonText: 'Volver'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-reactivar-reserva').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Reactivar reserva?',
+                    text: 'El cliente volverá a estar inscrito si hay plazas disponibles.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, reactivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

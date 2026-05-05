@@ -1,0 +1,300 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Factura>
+
+@{
+    ViewData["Title"] = "Mis facturas";
+
+    var facturas = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.Factura>();
+
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int pageSize = ViewBag.PageSize ?? 10;
+    int totalFacturas = ViewBag.TotalFacturas ?? 0;
+
+    int facturasPendientes = ViewBag.FacturasPendientes ?? 0;
+    int facturasPagadas = ViewBag.FacturasPagadas ?? 0;
+    decimal totalPendiente = ViewBag.TotalPendiente ?? 0m;
+
+    int startPage = Math.Max(1, currentPage - 2);
+    int endPage = Math.Min(totalPages, currentPage + 2);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Mis facturas</h2>
+            <p class="text-muted mb-0">Consulta tus facturas, pagos y descargas PDF</p>
+        </div>
+
+        <a asp-controller="ClienteDashboard" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Total facturas</span>
+                <p class="info-value mb-0">@totalFacturas</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Pendientes</span>
+                <p class="info-value mb-0 text-warning">@facturasPendientes</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Pagadas</span>
+                <p class="info-value mb-0 text-success">@facturasPagadas</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Importe pendiente</span>
+                <p class="info-value mb-0">@totalPendiente.ToString("0.00") €</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-box mb-4">
+        <form method="get" class="row g-3 align-items-end">
+
+            <div class="col-md-4">
+                <label class="form-label">Estado</label>
+                <select name="pagada" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="true" selected="@(ViewBag.Pagada?.ToString() == "True")">Pagadas</option>
+                    <option value="false" selected="@(ViewBag.Pagada?.ToString() == "False")">Pendientes</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Ver</label>
+                <select name="pageSize" class="form-select">
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="25" selected="@(pageSize == 25)">25</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-orange w-100">
+                    <i class="bi bi-search me-1"></i> Filtrar
+                </button>
+
+                <a asp-action="MisFacturas" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    @if (!facturas.Any())
+    {
+        <div class="alert alert-info">
+            No tienes facturas con los filtros seleccionados.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-modern align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nº factura</th>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Pago</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var f in facturas)
+                    {
+                        var pago = f.Pagos?
+                            .Where(p => p.Activo == true)
+                            .OrderByDescending(p => p.FechaPago)
+                            .FirstOrDefault();
+
+                        <tr>
+                            <td class="fw-semibold">@f.NumeroFactura</td>
+
+                            <td>@f.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</td>
+
+                            <td>@(f.TipoFactura?.Nombre ?? "-")</td>
+
+                            <td class="fw-bold">@f.Total.ToString("0.00") €</td>
+
+                            <td>
+                                @if (f.Pagada == true)
+                                {
+                                    <span class="badge bg-success">Pagada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                }
+                            </td>
+
+                            <td>
+                                @if (pago != null)
+                                {
+                                    <span>@(pago.MetodoPago?.Nombre ?? "-")</span>
+                                    <br />
+                                    <small class="text-muted">@pago.ReferenciaExterna</small>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin pago</span>
+                                }
+                            </td>
+
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a asp-controller="Facturas"
+                                           asp-action="Details"
+                                           asp-route-id="@f.Id"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+
+                                    <a asp-controller="Facturas"
+                                           asp-action="DescargarPdf"
+                                           asp-route-id="@f.Id"
+                                           class="btn btn-sm btn-outline-danger"
+                                           title="PDF">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </a>
+
+                                    @if (f.Pagada != true)
+                                    {
+                                        <form asp-controller="Facturas"
+                                              asp-action="PagarConStripe"
+                                              asp-route-id="@f.Id"
+                                              method="post"
+                                              class="d-inline form-stripe">
+                                            @Html.AntiForgeryToken()
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-success btn-stripe"
+                                                    title="Pagar con Stripe">
+                                                <i class="bi bi-credit-card"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+
+                <span class="text-muted small">
+                    Página @currentPage de @totalPages
+                </span>
+
+                <nav>
+                    <ul class="pagination mb-0">
+
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="MisFacturas"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-pagada="@ViewBag.Pagada">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="MisFacturas"
+                                   asp-route-page="@(currentPage - 1)"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-pagada="@ViewBag.Pagada">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        @for (int i = startPage; i <= endPage; i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                       asp-action="MisFacturas"
+                                       asp-route-page="@i"
+                                       asp-route-pageSize="@pageSize"
+                                       asp-route-pagada="@ViewBag.Pagada">
+                                    @i
+                                </a>
+                            </li>
+                        }
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="MisFacturas"
+                                   asp-route-page="@(currentPage + 1)"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-pagada="@ViewBag.Pagada">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                                   asp-action="MisFacturas"
+                                   asp-route-page="@totalPages"
+                                   asp-route-pageSize="@pageSize"
+                                   asp-route-pagada="@ViewBag.Pagada">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-stripe').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: 'Pagar con Stripe',
+                    text: 'Serás redirigido a la página segura de Stripe.',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ir a Stripe',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

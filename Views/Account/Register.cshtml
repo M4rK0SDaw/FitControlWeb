@@ -1,0 +1,14 @@
+﻿@model FitControlWeb.ViewModels.RegisterViewModel
+
+<h2>Registro</h2>
+
+<form asp-action="Register" method="post">
+    <input asp-for="Nombre" placeholder="Nombre" />
+    <input asp-for="Apellidos" placeholder="Apellidos" />
+    <input asp-for="Email" placeholder="Email" />
+    <input asp-for="Telefono" placeholder="Teléfono" />
+    <input asp-for="Password" type="password" placeholder="Password" />
+    <input asp-for="ConfirmPassword" type="password" placeholder="Confirmar" />
+
+    <button type="submit">Registrarse</button>
+</form>

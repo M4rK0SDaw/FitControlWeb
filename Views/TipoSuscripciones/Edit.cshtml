@@ -1,0 +1,85 @@
+﻿@model FitControlWeb.ViewModels.TipoSuscripcionEditViewModel
+
+@{
+    ViewData["Title"] = "Editar tipo de suscripción";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Editar tipo de suscripción</h2>
+            <p class="text-muted mb-0">Modificar plan, precio, duración y estado</p>
+        </div>
+
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="info-box">
+                    <h5 class="fw-bold mb-3">Datos del tipo</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Nombre" class="form-label"></label>
+                            <input asp-for="Nombre" class="form-control" />
+                            <span asp-validation-for="Nombre" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Precio" class="form-label"></label>
+                            <input asp-for="Precio" class="form-control" />
+                            <span asp-validation-for="Precio" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="DuracionDias" class="form-label">Duración en días</label>
+                            <input asp-for="DuracionDias" class="form-control" />
+                            <span asp-validation-for="DuracionDias" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="info-box">
+                    <h5 class="fw-bold mb-3">Estado</h5>
+
+                    <div class="form-check mt-2">
+                        <input asp-for="Activo" class="form-check-input" />
+                        <label asp-for="Activo" class="form-check-label">
+                            Tipo activo
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancelar</a>
+
+            <button type="submit" class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar cambios
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,57 @@
+﻿@model FitControlWeb.ViewModels.UsuarioEditViewModel
+
+@{
+    ViewData["Title"] = "Editar usuario";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <h2 class="page-title">Editar usuario</h2>
+        <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Apellidos" class="form-label"></label>
+                <input asp-for="Apellidos" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Telefono" class="form-label"></label>
+                <input asp-for="Telefono" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="RolId" class="form-label">Rol</label>
+                <select asp-for="RolId" asp-items="ViewBag.Roles" class="form-select"></select>
+            </div>
+
+            <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check mt-4">
+                    <input asp-for="Activo" class="form-check-input" />
+                    <label asp-for="Activo" class="form-check-label">Usuario activo</label>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-orange mt-4">Guardar cambios</button>
+    </form>
+</div>

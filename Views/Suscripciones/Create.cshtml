@@ -1,0 +1,131 @@
+﻿@model FitControlWeb.ViewModels.SuscripcionCreateViewModel
+@using FitControlWeb.Models.Entities
+
+@{
+    ViewData["Title"] = "Nueva suscripción";
+
+    var tipos = ViewBag.TiposSuscripcionData as List<TipoSuscripcion>
+        ?? new List<TipoSuscripcion>();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Nueva suscripción</h2>
+            <p class="text-muted mb-0">Crear una suscripción para un cliente</p>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="info-box">
+                    <h5 class="fw-bold mb-3">Datos de suscripción</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="UsuarioId" class="form-label">Cliente</label>
+                            <select asp-for="UsuarioId" asp-items="ViewBag.Usuarios" class="form-select">
+                                <option value="">Selecciona cliente</option>
+                            </select>
+                            <span asp-validation-for="UsuarioId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="TipoSuscripcionId" class="form-label">Tipo</label>
+
+                            <select asp-for="TipoSuscripcionId" class="form-select" id="tipoSuscripcion">
+                                <option value="">Selecciona tipo</option>
+
+                                @foreach (var tipo in tipos)
+                                {
+                                    <option value="@tipo.Id"
+                                            data-duracion="@tipo.DuracionDias"
+                                            data-precio="@tipo.Precio.ToString("0.00")">
+                                        @tipo.Nombre - @tipo.Precio.ToString("0.00") € - @tipo.DuracionDias días
+                                    </option>
+                                }
+                            </select>
+
+                            <span asp-validation-for="TipoSuscripcionId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="FechaInicio" class="form-label">Fecha inicio</label>
+                            <input asp-for="FechaInicio" type="date" class="form-control" id="fechaInicio" />
+                            <span asp-validation-for="FechaInicio" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha fin calculada</label>
+                            <input type="date" class="form-control" id="fechaFinVisual" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Precio</label>
+                            <input type="text" class="form-control" id="precioVisual" readonly />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+
+            <button type="submit" class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar suscripción
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function calcularDatosSuscripcion() {
+            const tipoSelect = document.getElementById("tipoSuscripcion");
+            const fechaInicioInput = document.getElementById("fechaInicio");
+            const fechaFinInput = document.getElementById("fechaFinVisual");
+            const precioInput = document.getElementById("precioVisual");
+
+            const selectedOption = tipoSelect.options[tipoSelect.selectedIndex];
+
+            const duracion = parseInt(selectedOption?.dataset?.duracion || "0");
+            const precio = selectedOption?.dataset?.precio || "";
+
+            precioInput.value = precio ? precio + " €" : "";
+
+            if (!fechaInicioInput.value || duracion <= 0) {
+                fechaFinInput.value = "";
+                return;
+            }
+
+            const fecha = new Date(fechaInicioInput.value);
+            fecha.setDate(fecha.getDate() + duracion);
+
+            fechaFinInput.value = fecha.toISOString().split("T")[0];
+        }
+
+        document.getElementById("tipoSuscripcion").addEventListener("change", calcularDatosSuscripcion);
+        document.getElementById("fechaInicio").addEventListener("change", calcularDatosSuscripcion);
+
+        calcularDatosSuscripcion();
+    </script>
+}

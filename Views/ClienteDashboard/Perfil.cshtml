@@ -1,0 +1,197 @@
+﻿@model FitControlWeb.ViewModels.ClientePerfilViewModel
+
+@{
+    ViewData["Title"] = "Mi perfil";
+
+    var extensiones = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+    string? fotoUrl = null;
+
+    foreach (var ext in extensiones)
+    {
+        var rutaFisica = System.IO.Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "uploads",
+            "usuarios",
+            $"usuario-{Model.Id}{ext}"
+        );
+
+        if (System.IO.File.Exists(rutaFisica))
+        {
+            fotoUrl = $"/uploads/usuarios/usuario-{Model.Id}{ext}";
+            break;
+        }
+    }
+
+    fotoUrl ??= "/img/default-user.png";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Mi perfil</h2>
+            <p class="text-muted mb-0">Gestiona tus datos personales y tu foto de perfil</p>
+        </div>
+
+        <a asp-controller="ClienteDashboard"
+               asp-action="Index"
+               class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form asp-action="Perfil"
+          asp-controller="ClienteDashboard"
+          method="post"
+          enctype="multipart/form-data">
+
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
+        }
+
+        <div class="row g-4">
+
+            <div class="col-lg-4">
+                <div class="info-box h-100 text-center">
+
+                    <img id="previewFoto"
+                         src="@fotoUrl"
+                         alt="Foto de perfil"
+                         class="rounded-circle mb-3 shadow-sm"
+                         style="width: 150px; height: 150px; object-fit: cover;" />
+
+                    <h5 class="fw-bold mb-1">@Model.Nombre @Model.Apellidos</h5>
+                    <p class="text-muted mb-3">@Model.Email</p>
+
+                    <label for="Foto" class="form-label fw-semibold">Cambiar foto</label>
+
+                    <input type="file"
+                           name="Foto"
+                           id="Foto"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp" />
+
+                    <small class="text-muted d-block mt-2">
+                        JPG, PNG o WEBP. Máximo 5MB.
+                    </small>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="info-box">
+                    <h5 class="fw-bold mb-3">Datos personales</h5>
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label asp-for="Nombre" class="form-label"></label>
+                            <input asp-for="Nombre" class="form-control" />
+                            <span asp-validation-for="Nombre" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Apellidos" class="form-label"></label>
+                            <input asp-for="Apellidos" class="form-control" />
+                            <span asp-validation-for="Apellidos" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" readonly />
+                            <small class="text-muted">
+                                El email no se puede cambiar desde el perfil.
+                            </small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Telefono" class="form-label"></label>
+                            <input asp-for="Telefono" class="form-control" placeholder="600 000 000" />
+                            <span asp-validation-for="Telefono" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="NuevaPassword" class="form-label">Nueva contraseña</label>
+                            <input asp-for="NuevaPassword"
+                                   type="password"
+                                   class="form-control"
+                                   placeholder="Déjalo vacío si no quieres cambiarla" />
+                            <span asp-validation-for="NuevaPassword" class="text-danger small"></span>
+                                <p class="text-muted mb-0">
+                                    Si cambias tu contraseña, tendrás que usar la nueva contraseña en el próximo inicio de sesión.
+                                </p>
+                        </div>
+
+                    </div>
+                </div>
+               
+            </div>
+
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-controller="ClienteDashboard"
+                   asp-action="Index"
+                   class="btn btn-outline-secondary">
+                Cancelar
+            </a>
+
+            <button type="submit" class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar cambios
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const inputFoto = document.getElementById('Foto');
+        const previewFoto = document.getElementById('previewFoto');
+
+        inputFoto.addEventListener('change', function () {
+            const file = this.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!allowedTypes.includes(file.type)) {
+                this.value = '';
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Formato no válido',
+                    text: 'Usa JPG, PNG o WEBP.'
+                });
+
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                this.value = '';
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Imagen demasiado grande',
+                    text: 'La imagen no puede superar los 5MB.'
+                });
+
+                return;
+            }
+
+            previewFoto.src = URL.createObjectURL(file);
+        });
+    </script>
+}

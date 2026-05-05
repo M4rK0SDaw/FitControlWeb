@@ -1,0 +1,649 @@
+﻿@model FitControlWeb.ViewModels.Dashboard.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Panel de administración</h2>
+            <p class="text-muted mb-0">Resumen dividido por áreas de gestión</p>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills dashboard-tabs mb-4" id="dashboardTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#resumen" type="button">
+                <i class="bi bi-speedometer2 me-1"></i> Resumen
+            </button>
+        </li>
+
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#usuarios" type="button">
+                <i class="bi bi-people me-1"></i> Usuarios
+            </button>
+        </li>
+
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#clases" type="button">
+                <i class="bi bi-calendar-event me-1"></i> Clases
+            </button>
+        </li>
+
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#reservas" type="button">
+                <i class="bi bi-journal-check me-1"></i> Reservas
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#economia" type="button">
+                <i class="bi bi-cash-coin me-1"></i> Economía
+            </button>
+        </li>
+
+    </ul>
+
+    <div class="tab-content">
+
+        <!-- RESUMEN -->
+        <div class="tab-pane fade show active" id="resumen">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Usuarios</span>
+                        <p class="info-value">@Model.TotalUsuarios</p>
+                        <small class="text-muted">@Model.UsuariosActivos activos</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Clases activas</span>
+                        <p class="info-value">@Model.ClasesActivas</p>
+                        <small class="text-muted">@Model.ClasesHoy hoy</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Reservas activas</span>
+                        <p class="info-value">@Model.ReservasActivas</p>
+                        <small class="text-muted">@Model.ReservasCanceladas canceladas</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Ocupación</span>
+                        <p class="info-value">@Model.OcupacionMedia %</p>
+                        <small class="text-muted">@Model.PlazasOcupadas / @Model.PlazasTotales plazas</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <h5 class="fw-bold mb-3">Reservas</h5>
+                        <canvas id="reservasChart" height="140"></canvas>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <h5 class="fw-bold mb-3">Usuarios por rol</h5>
+                        <canvas id="usuariosChart" height="140"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Facturado</span>
+                        <p class="info-value mb-0">@Model.TotalFacturado.ToString("0.00") €</p>
+                        <small class="text-muted">@Model.TotalFacturas facturas</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Cobrado</span>
+                        <p class="info-value mb-0 text-success">@Model.TotalCobrado.ToString("0.00") €</p>
+                        <small class="text-muted">Pagos registrados</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Pendiente</span>
+                        <p class="info-value mb-0 text-warning">@Model.PendienteCobro.ToString("0.00") €</p>
+                        <small class="text-muted">@Model.FacturasPendientes pendientes</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Mes actual</span>
+                        <p class="info-value mb-0 text-primary">@Model.IngresosMesActual.ToString("0.00") €</p>
+                        <small class="text-muted">Ingresos este mes</small>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- USUARIOS -->
+        <div class="tab-pane fade" id="usuarios">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Gestión de usuarios</h4>
+                    <p class="text-muted mb-0">Clientes, entrenadores y administradores</p>
+                </div>
+
+                <a asp-controller="Usuarios" asp-action="Index" class="btn btn-orange">
+                    Ir a usuarios
+                </a>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Total usuarios</span>
+                        <p class="info-value">@Model.TotalUsuarios</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Activos</span>
+                        <p class="info-value">@Model.UsuariosActivos</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Inactivos</span>
+                        <p class="info-value">@Model.UsuariosInactivos</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Clientes</span>
+                        <p class="info-value">@Model.TotalClientes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CLASES -->
+        <div class="tab-pane fade" id="clases">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Gestión de clases</h4>
+                    <p class="text-muted mb-0">Horarios, ocupación y rendimiento</p>
+                </div>
+
+                <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">
+                    Ir a clases
+                </a>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Total clases</span>
+                        <p class="info-value">@Model.TotalClases</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Activas</span>
+                        <p class="info-value">@Model.ClasesActivas</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Clases hoy</span>
+                        <p class="info-value">@Model.ClasesHoy</p>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Ocupación media</span>
+                        <p class="info-value">@Model.OcupacionMedia %</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                            Clases casi llenas
+                        </h5>
+
+                        @if (!Model.ClasesCasiLlenas.Any())
+                        {
+                            <div class="alert alert-success mb-0">No hay clases casi llenas.</div>
+                        }
+                        else
+                        {
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Clase</th>
+                                        <th>Fecha</th>
+                                        <th>Ocupación</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in Model.ClasesCasiLlenas)
+                                    {
+                                        var capacidad = c.CapacidadMaxima ?? 1;
+                                        var ocupadas = c.Reservas.Count(r => r.Activo == true);
+                                        var porcentaje = capacidad > 0 ? ocupadas * 100 / capacidad : 0;
+
+                                        <tr>
+                                            <td>@c.Nombre</td>
+                                            <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                <span class="badge bg-warning text-dark">
+                                                    @ocupadas / @capacidad (@porcentaje%)
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <a asp-controller="Clases" asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-graph-down text-danger me-1"></i>
+                            Baja ocupación
+                        </h5>
+
+                        @if (!Model.ClasesBajaOcupacion.Any())
+                        {
+                            <div class="alert alert-info mb-0">No hay clases con baja ocupación.</div>
+                        }
+                        else
+                        {
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Clase</th>
+                                        <th>Fecha</th>
+                                        <th>Ocupación</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in Model.ClasesBajaOcupacion)
+                                    {
+                                        var capacidad = c.CapacidadMaxima ?? 1;
+                                        var ocupadas = c.Reservas.Count(r => r.Activo == true);
+                                        var porcentaje = capacidad > 0 ? ocupadas * 100 / capacidad : 0;
+
+                                        <tr>
+                                            <td>@c.Nombre</td>
+                                            <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                <span class="badge bg-danger">
+                                                    @ocupadas / @capacidad (@porcentaje%)
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <a asp-controller="Clases" asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESERVAS -->
+        <div class="tab-pane fade" id="reservas">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Gestión de reservas</h4>
+                    <p class="text-muted mb-0">Reservas recientes y estado general</p>
+                </div>
+
+                <a asp-controller="Reservas" asp-action="Index" class="btn btn-orange">
+                    Ir a reservas
+                </a>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Total reservas</span>
+                        <p class="info-value">@Model.TotalReservas</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Activas</span>
+                        <p class="info-value">@Model.ReservasActivas</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Canceladas</span>
+                        <p class="info-value">@Model.ReservasCanceladas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">Últimas reservas</h5>
+
+                @if (!Model.UltimasReservas.Any())
+                {
+                    <div class="alert alert-info">No hay reservas recientes.</div>
+                }
+                else
+                {
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Clase</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.UltimasReservas)
+                            {
+                                <tr>
+                                    <td>@r.Usuario?.Nombre @r.Usuario?.Apellidos</td>
+                                    <td>@r.Clase?.Nombre</td>
+                                    <td>@r.FechaReserva?.ToString("dd/MM HH:mm")</td>
+                                    <td>
+                                        <span class="badge @(r.Activo == true ? "bg-success" : "bg-danger")">
+                                            @(r.Activo == true ? "Activa" : "Cancelada")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <!-- ECONOMÍA -->
+        <div class="tab-pane fade" id="economia">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Economía</h4>
+                    <p class="text-muted mb-0">Facturación, cobros e ingresos registrados</p>
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <a asp-controller="Facturas" asp-action="Index" class="btn btn-orange">
+                        Ir a facturas
+                    </a>
+
+                    <a asp-controller="MetodoPagos" asp-action="Index" class="btn btn-outline-dark">
+                        Métodos de pago
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Total facturado</span>
+                        <p class="info-value mb-0">@Model.TotalFacturado.ToString("0.00") €</p>
+                        <small class="text-muted">Facturas emitidas</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Total cobrado</span>
+                        <p class="info-value mb-0 text-success">@Model.TotalCobrado.ToString("0.00") €</p>
+                        <small class="text-muted">Pagos registrados</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Pendiente de cobro</span>
+                        <p class="info-value mb-0 text-warning">@Model.PendienteCobro.ToString("0.00") €</p>
+                        <small class="text-muted">@Model.FacturasPendientes facturas pendientes</small>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-label">Ingresos del mes</span>
+                        <p class="info-value mb-0 text-primary">@Model.IngresosMesActual.ToString("0.00") €</p>
+                        <small class="text-muted">Mes actual</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Total facturas</span>
+                        <p class="info-value mb-0">@Model.TotalFacturas</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Facturas pagadas</span>
+                        <p class="info-value mb-0 text-success">@Model.FacturasPagadas</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <span class="info-label">Facturas pendientes</span>
+                        <p class="info-value mb-0 text-warning">@Model.FacturasPendientes</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Últimas facturas</h5>
+
+                            <a asp-controller="Facturas" asp-action="Index" class="btn btn-sm btn-outline-dark">
+                                Ver todas
+                            </a>
+                        </div>
+
+                        @if (!Model.UltimasFacturas.Any())
+                        {
+                            <div class="alert alert-info mb-0">
+                                No hay facturas registradas.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover table-modern align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Nº</th>
+                                            <th>Cliente</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach (var f in Model.UltimasFacturas)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@f.NumeroFactura</td>
+
+                                                <td>
+                                                    @(f.Usuario != null
+                                                        ? $"{f.Usuario.Nombre} {f.Usuario.Apellidos}"
+                                                        : "Sin cliente")
+                                                </td>
+
+                                                <td>@f.Total.ToString("0.00") €</td>
+
+                                                <td>
+                                                    @if (f.Pagada == true)
+                                                    {
+                                                        <span class="badge bg-success">Pagada</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                                    }
+                                                </td>
+
+                                                <td class="text-end">
+                                                    <a asp-controller="Facturas"
+                                                           asp-action="Details"
+                                                           asp-route-id="@f.Id"
+                                                           class="btn btn-sm btn-outline-dark">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="info-box h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Últimos pagos</h5>
+                        </div>
+
+                        @if (!Model.UltimosPagos.Any())
+                        {
+                            <div class="alert alert-info mb-0">
+                                No hay pagos registrados.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover table-modern align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Cliente</th>
+                                            <th>Método</th>
+                                            <th>Monto</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach (var p in Model.UltimosPagos)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @(p.Factura?.Usuario != null
+                                                        ? $"{p.Factura.Usuario.Nombre} {p.Factura.Usuario.Apellidos}"
+                                                        : "Sin cliente")
+                                                </td>
+
+                                                <td>@(p.MetodoPago?.Nombre ?? "-")</td>
+
+                                                <td class="fw-bold">@p.Monto.ToString("0.00") €</td>
+
+                                                <td>@p.FechaPago?.ToString("dd/MM/yyyy HH:mm")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+       
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        new Chart(document.getElementById('reservasChart'), {
+        type: 'doughnut',
+        data: {
+        labels: ['Activas', 'Canceladas'],
+        datasets: [{
+        data: [@Model.ReservasActivas, @Model.ReservasCanceladas],
+        backgroundColor: ['#198754', '#dc3545']
+        }]
+        },
+        options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+        }
+        });
+
+        new Chart(document.getElementById('usuariosChart'), {
+        type: 'bar',
+        data: {
+        labels: ['Admins', 'Clientes', 'Entrenadores'],
+        datasets: [{
+        label: 'Usuarios',
+        data: [@Model.TotalAdmins, @Model.TotalClientes, @Model.TotalEntrenadores],
+        backgroundColor: ['#111318', '#ff7a00', '#0d6efd']
+        }]
+        },
+        options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+        y: {
+        beginAtZero: true,
+        ticks: { precision: 0 }
+        }
+        }
+        }
+        });
+    </script>
+}

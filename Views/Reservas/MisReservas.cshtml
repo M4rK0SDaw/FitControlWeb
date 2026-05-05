@@ -1,0 +1,72 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Reserva>
+
+@{
+    ViewData["Title"] = "Mis reservas";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <h2 class="page-title">Mis reservas</h2>
+        <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">Reservar nueva clase</a>
+    </div>
+
+   @*  @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    } *@
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Todavía no tienes reservas. Puedes reservar una clase desde el listado de clases disponibles.
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var r in Model)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 reserva-card">
+                        <div class="card-body">
+                            <span class="badge bg-warning text-dark mb-3">
+                                @r.EstadoReserva.Nombre
+                            </span>
+
+                            <h4 class="fw-bold">@r.Clase.Nombre</h4>
+
+                            <p class="text-muted mb-1">
+                                Fecha clase: @r.Clase.Fecha.ToString("dd/MM/yyyy")
+                            </p>
+
+                            <p class="mb-1">
+                                Horario: @r.Clase.HoraInicio - @r.Clase.HoraFin
+                            </p>
+
+                            <p class="mb-3">
+                                Reserva realizada:
+                                @r.FechaReserva?.ToString("dd/MM/yyyy HH:mm")
+                            </p>
+
+                            <form asp-action="Cancelar" asp-route-id="@r.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-danger w-100">
+                                    Cancelar reserva
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

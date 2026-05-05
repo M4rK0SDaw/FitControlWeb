@@ -1,0 +1,344 @@
+﻿@model FitControlWeb.Models.Entities.Clase
+
+@{
+    ViewData["Title"] = "Clases";
+
+    var capacidad = Model.CapacidadMaxima ?? 1;
+    var reservas = Model.Reservas?.Count(r => r.Activo == true) ?? 0;
+    var porcentaje = capacidad > 0 ? (reservas * 100 / capacidad) : 0;
+
+    var progressClass = porcentaje >= 90 ? "bg-danger" :
+                        porcentaje >= 60 ? "bg-warning" :
+                        "bg-success";
+
+    var estaLlena = reservas >= capacidad;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">
+                Detalle de @Model.Nombre
+            </h2>            
+            <p class="text-muted mb-2">Información completa de la clase</p>
+
+            <div class="d-flex gap-2 flex-wrap">
+                @if (Model.Activo == true)
+                {
+                    <span class="badge bg-success">Activa</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Inactiva</span>
+                }
+
+                <span class="badge bg-light text-dark border">
+                    @reservas / @capacidad plazas
+                </span>
+
+                <span class="badge bg-light text-dark border">
+                    @porcentaje% ocupación
+                </span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            @if (User.IsInRole("Administrador"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-orange">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+
+                <form asp-action="Delete"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline delete-form">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button"
+                            class="btn btn-outline-danger btn-delete">
+                        <i class="bi bi-trash"></i> Eliminar
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">Datos de la clase</h5>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="info-label">Especialidad</span>
+                        <p class="info-value">
+                            @(Model.Especialidad?.Nombre ?? "Sin especialidad")
+                        </p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Entrenador</span>
+                        <p class="info-value">
+                            @(Model.Entrenador != null
+                                ? $"{Model.Entrenador.Nombre} {Model.Entrenador.Apellidos}"
+                                : "Sin entrenador")
+                        </p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Fecha</span>
+                        <p class="info-value">@Model.Fecha.ToString("dd/MM/yyyy")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Horario</span>
+                        <p class="info-value">@Model.HoraInicio - @Model.HoraFin</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Capacidad mínima</span>
+                        <p class="info-value">@Model.CapacidadMinima</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Capacidad máxima</span>
+                        <p class="info-value">@Model.CapacidadMaxima</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Estado</span>
+                        @if (Model.Activo == true)
+                        {
+                            <span class="badge bg-success">Activa</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Inactiva</span>
+                        }
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Reservas actuales</span>
+                        <p class="info-value">@reservas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">Ocupación</h5>
+
+                <div class="progress mb-3" style="height: 14px;">
+                    <div class="progress-bar @progressClass"
+                         role="progressbar"
+                         style="width:@porcentaje%">
+                    </div>
+                </div>
+
+                <p class="text-muted mb-0">
+                    @reservas de @capacidad plazas ocupadas
+                </p>
+
+                @if (User.IsInRole("Cliente"))
+                {
+                    if (estaLlena)
+                    {
+                        <button class="btn btn-secondary w-100 mt-4" disabled>
+                            <i class="bi bi-x-circle"></i> Clase completa
+                        </button>
+                    }
+                    else
+                    {
+                        <form asp-controller="Reservas" asp-action="Reservar" method="post" class="mt-4">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="claseId" value="@Model.Id" />
+
+                            <button class="btn btn-orange w-100">
+                                <i class="bi bi-calendar-check"></i> Reservar clase
+                            </button>
+                        </form>
+                    }
+                }
+
+                @if (User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+                {
+                    <a asp-controller="Reservas"
+                           asp-action="PorClase"
+                           asp-route-claseId="@Model.Id"
+                           class="btn btn-outline-dark w-100 mt-4">
+                        <i class="bi bi-people"></i> Ver reservas
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: '¿Dar de baja esta clase?',
+                    text: 'La clase quedará inactiva y no aparecerá en los listados activos.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}
+
+@* @model FitControlWeb.Models.Entities.Clase
+
+@{
+    ViewData["Title"] = "Detalle de clase";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">@Model.Nombre</h2>
+            <p class="text-muted mb-0">Información completa de la clase</p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+
+            @if (User.IsInRole("Administrador"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-orange">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">Datos de la clase</h5>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="info-label">Especialidad</span>
+                        <p class="info-value">@Model.Especialidad.Nombre</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Entrenador</span>
+                        <p class="info-value">@Model.Entrenador.Nombre @Model.Entrenador.Apellidos</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Fecha</span>
+                        <p class="info-value">@Model.Fecha.ToString("dd/MM/yyyy")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Horario</span>
+                        <p class="info-value">@Model.HoraInicio - @Model.HoraFin</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Capacidad mínima</span>
+                        <p class="info-value">@Model.CapacidadMinima</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Capacidad máxima</span>
+                        <p class="info-value">@Model.CapacidadMaxima</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Estado</span>
+                        @if (Model.Activo == true)
+                        {
+                            <span class="badge bg-success">Activa</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Inactiva</span>
+                        }
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="info-label">Reservas actuales</span>
+                        <p class="info-value">@Model.Reservas.Count(r => r.Activo == true)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <h5 class="fw-bold mb-3">Ocupación</h5>
+
+                @{
+                    var capacidad = Model.CapacidadMaxima ?? 1;
+                    var reservas = Model.Reservas.Count(r => r.Activo == true);
+                    var porcentaje = capacidad > 0 ? (reservas * 100 / capacidad) : 0;
+                }
+
+                <div class="progress mb-3" style="height: 14px;">
+                    <div class="progress-bar bg-warning"
+                         role="progressbar"
+                         style="width:@porcentaje%">
+                    </div>
+                </div>
+
+                <p class="text-muted mb-0">
+                    @reservas de @capacidad plazas ocupadas
+                </p>
+
+                @if (User.IsInRole("Cliente"))
+                {
+                    <form asp-controller="Reservas" asp-action="Reservar" method="post" class="mt-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="claseId" value="@Model.Id" />
+
+                        <button class="btn btn-orange w-100">
+                            <i class="bi bi-calendar-check"></i> Reservar clase
+                        </button>
+                    </form>
+                }
+
+                @if (User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+                {                    
+                    <a asp-controller="Reservas"
+                           asp-action="PorClase"
+                           asp-route-claseId="@Model.Id"
+                           class="btn btn-outline-dark w-100 mt-4">
+                        <i class="bi bi-people"></i> Ver reservas
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div> *@

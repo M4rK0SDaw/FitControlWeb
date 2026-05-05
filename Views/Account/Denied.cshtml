@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Acceso denegado";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="text-center py-5">
+        <i class="bi bi-shield-lock text-danger" style="font-size: 4rem;"></i>
+
+        <h2 class="page-title mt-3">Acceso denegado</h2>
+
+        <p class="text-muted mb-4">
+            No tienes permisos para acceder a esta sección.
+        </p>
+
+        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+            <i class="bi bi-arrow-left"></i> Volver atrás
+        </button>
+    </div>
+</div>

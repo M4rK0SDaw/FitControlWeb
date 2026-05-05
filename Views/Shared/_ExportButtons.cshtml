@@ -1,0 +1,38 @@
+﻿@model FitControlWeb.ViewModels.Shared.ExportButtonsViewModel
+
+<div class="d-flex gap-2 align-items-center flex-wrap">
+
+    @if (Model.ShowExcel)
+    {
+        <a asp-controller="@Model.Controller"
+               asp-action="@Model.ExcelAction"
+               asp-all-route-data="@Model.RouteValues"
+               class="btn btn-outline-success"
+               title="Exportar Excel">
+            <i class="bi bi-file-earmark-excel"></i>
+        </a>
+    }
+
+    @if (Model.ShowCsv)
+    {
+        <a asp-controller="@Model.Controller"
+               asp-action="@Model.CsvAction"
+               asp-all-route-data="@Model.RouteValues"
+               class="btn btn-outline-secondary"
+               title="Exportar CSV">
+            <i class="bi bi-filetype-csv"></i>
+        </a>
+    }
+
+    @if (Model.ShowPdf)
+    {
+        <a asp-controller="@Model.Controller"
+               asp-action="@Model.PdfAction"
+               asp-all-route-data="@Model.RouteValues"
+               class="btn btn-outline-danger"
+               title="Exportar PDF">
+            <i class="bi bi-file-earmark-pdf"></i>
+        </a>
+    }
+
+</div>

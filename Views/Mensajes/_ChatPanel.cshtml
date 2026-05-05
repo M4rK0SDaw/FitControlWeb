@@ -1,0 +1,74 @@
+﻿@model IEnumerable<FitControlWeb.Models.Entities.Conversacion>
+
+@{
+    int usuarioActualId = ViewBag.UsuarioActualId;
+}
+
+<div class="chat-popup-header mb-3">
+    <div>
+        <h5 class="fw-bold mb-0">Mensajes</h5>
+        <small class="text-muted">Chat interno</small>
+    </div>
+
+    <a asp-controller="Mensajes"
+           asp-action="Nueva"
+           class="btn btn-sm btn-orange">
+        <i class="bi bi-plus-circle"></i>
+    </a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No tienes conversaciones todavía.
+    </div>
+
+    <a asp-controller="Mensajes"
+           asp-action="Nueva"
+           class="btn btn-orange w-100">
+        Nueva conversación
+    </a>
+}
+else
+{
+    <div class="chat-conversation-list">
+        @foreach (var c in Model)
+        {
+            var otroUsuario = c.Usuario1Id == usuarioActualId ? c.Usuario2 : c.Usuario1;
+
+            var ultimoMensaje = c.Mensajes
+                .OrderByDescending(m => m.FechaEnvio)
+                .FirstOrDefault();
+
+            var noLeidos = c.Mensajes
+                .Count(m => m.RemitenteId != usuarioActualId && m.Leido != true);
+
+            <button type="button"
+                    class="chat-conversation-item"
+                    data-user-id="@otroUsuario.Id">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <strong>@otroUsuario.Nombre @otroUsuario.Apellidos</strong>
+                        <div class="small text-muted">
+                            @if (ultimoMensaje == null)
+                            {
+                                <span>Sin mensajes</span>
+                            }
+                            else
+                            {
+                                @(ultimoMensaje.Contenido.Length > 45
+                                    ? ultimoMensaje.Contenido.Substring(0, 45) + "..."
+                                    : ultimoMensaje.Contenido)
+                            }
+                        </div>
+                    </div>
+
+                    @if (noLeidos > 0)
+                    {
+                        <span class="badge bg-danger">@noLeidos</span>
+                    }
+                </div>
+            </button>
+        }
+    </div>
+}

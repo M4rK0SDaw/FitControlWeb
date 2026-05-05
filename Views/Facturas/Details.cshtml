@@ -1,0 +1,186 @@
+﻿@model FitControlWeb.Models.Entities.Factura
+
+@{
+    ViewData["Title"] = "Detalle de factura";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Factura @Model.NumeroFactura</h2>
+            <p class="text-muted mb-0">Detalle de factura y pago simulado</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+           
+            @if (Model.Pagada != true)
+            {
+                <form asp-action="PagarConStripe"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="d-inline form-stripe">
+                    @Html.AntiForgeryToken()
+
+                    <button type="button" class="btn btn-orange btn-stripe">
+                        <i class="bi bi-credit-card"></i> Pagar con Stripe
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-action="DescargarPdf"
+                       asp-route-id="@Model.Id"
+                       class="btn btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Cliente</span>
+                <p class="info-value mb-0">
+                    @(Model.Usuario != null ? $"{Model.Usuario.Nombre} {Model.Usuario.Apellidos}" : "Sin cliente")
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Fecha emisión</span>
+                <p class="info-value mb-0">@Model.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Total</span>
+                <p class="info-value mb-0">@Model.Total.ToString("0.00") €</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-label">Estado</span>
+                <br />
+                @if (Model.Pagada == true)
+                {
+                    <span class="badge bg-success">Pagada</span>
+                }
+                else
+                {
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box mb-4">
+        <h5 class="fw-bold mb-3">Líneas de factura</h5>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-modern align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Concepto</th>
+                        <th>Cantidad</th>
+                        <th>Precio unitario</th>
+                        <th>Total línea</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var d in Model.FacturaDetalles)
+                    {
+                        <tr>
+                            <td>@d.Concepto</td>
+                            <td>@d.Cantidad</td>
+                            <td>@d.PrecioUnitario.ToString("0.00") €</td>
+                            <td>@d.TotalLinea €</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-end mt-3">
+            <p class="mb-1">Subtotal: <strong>@Model.Subtotal.ToString("0.00") €</strong></p>
+            <p class="mb-1">Impuestos: <strong>@Model.Impuestos.ToString("0.00") €</strong></p>
+            <h5>Total: <strong>@Model.Total.ToString("0.00") €</strong></h5>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h5 class="fw-bold mb-3">Pagos</h5>
+
+        @if (Model.Pagos == null || !Model.Pagos.Any())
+        {
+            <div class="alert alert-info mb-0">
+                Esta factura todavía no tiene pagos registrados.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-modern align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Método</th>
+                            <th>Monto</th>
+                            <th>Fecha pago</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var p in Model.Pagos.Where(p => p.Activo == true))
+                        {
+                            <tr>
+                                <td>@(p.MetodoPago?.Nombre ?? "Sin método")</td>
+                                <td>@p.Monto.ToString("0.00") €</td>
+                                <td>@p.FechaPago?.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@p.ReferenciaExterna</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>   
+        document.querySelectorAll('.btn-stripe').forEach(button => {
+            button.addEventListener('click', function () {
+                const form = this.closest('form');
+
+                Swal.fire({
+                    title: 'Pagar con Stripe',
+                    text: 'Serás redirigido a la página segura de Stripe en modo test.',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff7a00',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ir a Stripe',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+    </script>
+}
