@@ -23,16 +23,53 @@ public class ClasesController : Controller
         _context = context;
     }
 
+    #region listar
     public async Task<IActionResult> Index(
-       string search = "",
-       int? entrenadorId = null,
-       int? especialidadId = null,
-       int page = 1,
-       int pageSize = 10)
+    string search = "",
+    int? entrenadorId = null,
+    int? especialidadId = null,
+    string? estado = null,
+    int page = 1,
+    int pageSize = 10)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is 10 or 25 or 50 or 100 ? pageSize : 10;
 
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+
+        int? usuarioId = null;
+        bool clienteTieneSuscripcionActiva = false;
+        List<int> clasesReservadasCliente = new();
+
+        if (User.IsInRole("Entrenador"))
+        {
+            entrenadorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        }
+
+        if (User.IsInRole("Cliente"))
+        {
+            usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            if (string.IsNullOrWhiteSpace(estado))
+                estado = "disponibles";
+
+            clienteTieneSuscripcionActiva = await _context.Suscripciones.AnyAsync(s =>
+                s.UsuarioId == usuarioId.Value &&
+                s.Activa == true &&
+                s.FechaFin >= DateTime.Today);
+
+            clasesReservadasCliente = await _context.Reservas
+                .Where(r =>
+                    r.UsuarioId == usuarioId.Value &&
+                    r.Activo == true)
+                .Select(r => r.ClaseId)
+                .ToListAsync();
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+                estado = "todas";
+        }
         if (User.IsInRole("Entrenador"))
         {
             entrenadorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -42,22 +79,20 @@ public class ClasesController : Controller
             search,
             entrenadorId,
             especialidadId,
+            estado,
+            usuarioId,
             page,
             pageSize);
 
         var totalItems = await _claseService.CountFiltradasAsync(
             search,
             entrenadorId,
-            especialidadId);
+            especialidadId,
+            estado,
+            usuarioId);
 
         var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
-
-        int? usuarioId = null;
-        bool clienteTieneSuscripcionActiva = false;
-        List<int> clasesReservadasCliente = new();
-
+                
         if (User.IsInRole("Cliente"))
         {
             // usuarioId = int.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
@@ -122,12 +157,12 @@ public class ClasesController : Controller
         ViewBag.Search = search;
         ViewBag.EntrenadorId = entrenadorId;
         ViewBag.EspecialidadId = especialidadId;
-
+        ViewBag.Estado = estado;
         await CargarCombosAsync();
 
         return View(vm);
     }
-
+    #endregion
 
     public async Task<IActionResult> Details(int id)
     {
@@ -159,7 +194,7 @@ public class ClasesController : Controller
     [Authorize(Roles = "Administrador")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ExportButtonsViewModel model)
+    public async Task<IActionResult> Create(ClaseCreateViewModel model)
     {
 
         if (!ModelState.IsValid)
@@ -337,6 +372,8 @@ public class ClasesController : Controller
             search ?? "",
             entrenadorId,
             especialidadId,
+            estado: "todas",
+            clienteId: null,
             page: 1,
             pageSize: int.MaxValue);
 
@@ -380,6 +417,8 @@ public class ClasesController : Controller
             search ?? "",
             entrenadorId,
             especialidadId,
+            estado: "todas",
+            clienteId: null,
             page: 1,
             pageSize: int.MaxValue);
 
@@ -447,6 +486,8 @@ public class ClasesController : Controller
                 search ?? "",
                 entrenadorId,
                 especialidadId,
+                estado: "todas",
+                clienteId: null,
                 page: 1,
                 pageSize: int.MaxValue);
 

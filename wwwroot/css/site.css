@@ -36,14 +36,14 @@ body {
     margin-bottom: 36px;
 }
 
-    .sidebar-brand span {
-        color: #fff;
-    }
+.sidebar-brand span {
+    color: #fff;
+}
 
-    .sidebar-brand strong {
-        color: var(--gym-orange);
-        margin-left: 3px;
-    }
+.sidebar-brand strong {
+    color: var(--gym-orange);
+    margin-left: 3px;
+}
 
 .sidebar-nav {
     display: flex;
@@ -60,11 +60,11 @@ body {
     transition: .2s;
 }
 
-    .sidebar-link:hover {
-        background: var(--gym-orange-soft);
-        color: #fff;
-        transform: translateX(4px);
-    }
+.sidebar-link:hover {
+    background: var(--gym-orange-soft);
+    color: #fff;
+    transform: translateX(4px);
+}
 
 .sidebar-footer {
     margin-top: auto;
@@ -121,13 +121,13 @@ body {
     line-height: 1.1;
 }
 
-    .user-info span {
-        font-weight: 700;
-    }
+.user-info span {
+    font-weight: 700;
+}
 
-    .user-info small {
-        color: var(--gym-muted);
-    }
+.user-info small {
+    color: var(--gym-muted);
+}
 
 .btn-logout {
     background: #111318;
@@ -138,10 +138,10 @@ body {
     border: none;
 }
 
-    .btn-logout:hover {
-        background: var(--gym-orange);
-        color: #fff;
-    }
+.btn-logout:hover {
+    background: var(--gym-orange);
+    color: #fff;
+}
 
 .card {
     border: none;
@@ -233,10 +233,10 @@ body {
     transition: .2s ease;
 }
 
-    .chat-conversation-item:hover {
-        border-color: #ff7a00;
-        background: #fff7ef;
-    }
+.chat-conversation-item:hover {
+    border-color: #ff7a00;
+    background: #fff7ef;
+}
 
 .chat-box-popup {
     height: 520px;
@@ -254,17 +254,17 @@ body {
     margin-bottom: .75rem;
 }
 
-    .chat-message.mine {
-        margin-left: auto;
-        background: #ff7a00;
-        color: white;
-    }
+.chat-message.mine {
+    margin-left: auto;
+    background: #ff7a00;
+    color: white;
+}
 
-    .chat-message.other {
-        margin-right: auto;
-        background: white;
-        border: 1px solid #dee2e6;
-    }
+.chat-message.other {
+    margin-right: auto;
+    background: white;
+    border: 1px solid #dee2e6;
+}
 
 .chat-time {
     font-size: .72rem;
@@ -275,4 +275,39 @@ body {
     .chat-offcanvas {
         width: 100% !important;
     }
+}
+
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(rgba(17, 19, 24, .78), rgba(17, 19, 24, .78)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1600&q=80');
+    background-size: cover;
+    background-position: center;
+}
+.auth-card {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+
+.auth-title {
+    font-weight: 800;
+    color: #111318;
+}
+
+.btn-orange {
+    background: #ff7a00;
+    color: #fff;
+    border: none;
+}
+
+.btn-orange:hover {
+    background: #e86f00;
+    color: #fff;
 }

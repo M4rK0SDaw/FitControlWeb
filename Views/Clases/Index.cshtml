@@ -44,7 +44,8 @@
                     {
                         { "search", ViewBag.Search?.ToString() },
                         { "entrenadorId", ViewBag.EntrenadorId?.ToString() },
-                        { "especialidadId", ViewBag.EspecialidadId?.ToString() }
+                        { "especialidadId", ViewBag.EspecialidadId?.ToString() },
+                        { "estado", ViewBag.Estado?.ToString() }
                     }
                 };
                 
@@ -104,7 +105,8 @@
                 </select>
             </div> *@
 
-            <div class="col-md-3">
+            @*             <div class="col-md-3">*@
+            <div class="col-md-3 d-flex gap-2">
                 <label class="form-label">Especialidad</label>
                 <select name="especialidadId" class="form-select">
                     <option value="">Todas</option>
@@ -113,6 +115,37 @@
                         <option value="@item.Value"
                                 selected="@(ViewBag.EspecialidadId != null && ViewBag.EspecialidadId.ToString() == item.Value)">
                             @item.Text
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    <option value="todas" selected="@(ViewBag.Estado == "todas")">
+                        Todas
+                    </option>
+
+                    <option value="disponibles" selected="@(ViewBag.Estado == "disponibles")">
+                        Disponibles
+                    </option>
+
+                    <option value="futuras" selected="@(ViewBag.Estado == "futuras")">
+                        Futuras
+                    </option>
+
+                    <option value="finalizadas" selected="@(ViewBag.Estado == "finalizadas")">
+                        Finalizadas
+                    </option>
+
+                    <option value="completas" selected="@(ViewBag.Estado == "completas")">
+                        Completas
+                    </option>
+
+                    @if (User.IsInRole("Cliente"))
+                    {
+                        <option value="reservadas" selected="@(ViewBag.Estado == "reservadas")">
+                            Mis reservadas
                         </option>
                     }
                 </select>
@@ -302,7 +335,8 @@
                                asp-route-pageSize="@pageSize"
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
-                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                               asp-route-especialidadId="@ViewBag.EspecialidadId"
+                               asp-route-estado="@ViewBag.Estado">
                             <i class="bi bi-chevron-double-left"></i>
                         </a>
                     </li>
@@ -314,7 +348,8 @@
                                asp-route-pageSize="@pageSize"
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
-                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                               asp-route-especialidadId="@ViewBag.EspecialidadId"
+                               asp-route-estado="@ViewBag.Estado">
                             <i class="bi bi-chevron-left"></i>
                         </a>
                     </li>
@@ -328,7 +363,8 @@
                                    asp-route-pageSize="@pageSize"
                                    asp-route-search="@ViewBag.Search"
                                    asp-route-entrenadorId="@ViewBag.EntrenadorId"
-                                   asp-route-especialidadId="@ViewBag.EspecialidadId">
+                                   asp-route-especialidadId="@ViewBag.EspecialidadId"
+                                   asp-route-estado="@ViewBag.Estado">
                                 @i
                             </a>
                         </li>
@@ -341,7 +377,8 @@
                                asp-route-pageSize="@pageSize"
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
-                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                               asp-route-especialidadId="@ViewBag.EspecialidadId"
+                               asp-route-estado="@ViewBag.Estado">                            
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
@@ -353,7 +390,8 @@
                                asp-route-pageSize="@pageSize"
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
-                               asp-route-especialidadId="@ViewBag.EspecialidadId">
+                               asp-route-especialidadId="@ViewBag.EspecialidadId"
+                               asp-route-estado="@ViewBag.Estado">                            
                             <i class="bi bi-chevron-double-right"></i>
                         </a>
                     </li>

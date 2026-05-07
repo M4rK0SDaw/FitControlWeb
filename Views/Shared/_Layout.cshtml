@@ -9,12 +9,12 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/LayoutStyle.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/FitControlWeb.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @await RenderSectionAsync("Styles", required: false)
 </head>
 
-
+<body>
 @{
     string? usuarioIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     string? fotoUsuarioUrl = null;
@@ -46,8 +46,6 @@
         ? nombreCompleto.Substring(0, 1).ToUpper()
         : "U";
 }
-
-<body>
     @if (User.Identity != null && User.Identity.IsAuthenticated)
     {
         <div class="app-shell">
@@ -196,7 +194,7 @@
                 </header>
 
                 <main class="content-area">
-                    @if (TempData["Success"] != null)
+                    @* @if (TempData["Success"] != null)
                     {
                         <div class="container mt-3">
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -216,7 +214,8 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
                         </div>
-                    }
+                    } *@
+                    <partial name="_Alerts" />
                     @RenderBody()
                 </main>
             </div>
@@ -225,12 +224,13 @@
     else
     {
         <main>
+            <partial name="_Alerts" />
             @RenderBody()
         </main>
     }
 
     @if (User.Identity?.IsAuthenticated == true &&
-                        (User.IsInRole("Cliente") || User.IsInRole("Entrenador")))
+                            (User.IsInRole("Cliente") || User.IsInRole("Entrenador")))
     {
         <button class="btn btn-orange chat-float-btn position-relative"
                 type="button"

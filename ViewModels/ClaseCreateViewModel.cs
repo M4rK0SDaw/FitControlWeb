@@ -2,7 +2,7 @@
 
 namespace FitControlWeb.ViewModels;
 
-public class ExportButtonsViewModel
+public class ClaseCreateViewModel
 {
     [Required(ErrorMessage = "El nombre de la clase es obligatorio.")]
     [StringLength(150, ErrorMessage = "El nombre no puede superar los 150 caracteres.")]

@@ -1,14 +1,73 @@
-﻿@model FitControlWeb.ViewModels.RegisterViewModel
+﻿@model FitControlWeb.ViewModels.Auth.RegisterViewModel
 
-<h2>Registro</h2>
+@{
+    ViewData["Title"] = "Crear cuenta";
+    Layout = "_Layout";
+}
 
-<form asp-action="Register" method="post">
-    <input asp-for="Nombre" placeholder="Nombre" />
-    <input asp-for="Apellidos" placeholder="Apellidos" />
-    <input asp-for="Email" placeholder="Email" />
-    <input asp-for="Telefono" placeholder="Teléfono" />
-    <input asp-for="Password" type="password" placeholder="Password" />
-    <input asp-for="ConfirmPassword" type="password" placeholder="Confirmar" />
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <h2 class="auth-title mb-1">Crear cuenta</h2>
+            <p class="text-muted mb-0">Regístrate como cliente de FitControl Web</p>
+        </div>
 
-    <button type="submit">Registrarse</button>
-</form>
+        <form asp-action="Register" asp-controller="Account" method="post">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombre" class="form-label"></label>
+                    <input asp-for="Nombre" class="form-control" />
+                    <span asp-validation-for="Nombre" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Apellidos" class="form-label"></label>
+                    <input asp-for="Apellidos" class="form-control" />
+                    <span asp-validation-for="Apellidos" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Telefono" class="form-label"></label>
+                    <input asp-for="Telefono" class="form-control" />
+                    <span asp-validation-for="Telefono" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label">Contraseña</label>
+                    <input asp-for="Password" class="form-control" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ConfirmPassword" class="form-label">Repetir contraseña</label>
+                    <input asp-for="ConfirmPassword" class="form-control" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-orange w-100 mt-4">
+                Crear cuenta
+            </button>
+
+            <div class="text-center mt-3">
+                <a asp-controller="Account" asp-action="Login" class="text-decoration-none">
+                    Ya tengo cuenta
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

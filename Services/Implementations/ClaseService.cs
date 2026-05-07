@@ -124,12 +124,16 @@ public class ClaseService : IClaseService
     }
 
     public async Task<List<Clase>> GetFiltradasAsync(
-    string search,
-    int? entrenadorId,
-    int? especialidadId,
-    int page,
-    int pageSize)
+       string search,
+       int? entrenadorId,
+       int? especialidadId,
+       string? estado,
+       int? clienteId,
+       int page,
+       int pageSize)
     {
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+
         var query = _context.Clases
             .AsNoTracking()
             .Include(c => c.Entrenador)
@@ -152,6 +156,62 @@ public class ClaseService : IClaseService
             query = query.Where(c => c.EspecialidadId == especialidadId.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            estado = estado.ToLower();
+
+            switch (estado)
+            {
+                case "disponibles":
+                    query = query.Where(c =>
+                        c.Fecha >= hoy &&
+                        (c.CapacidadMaxima ?? 0) > _context.Reservas.Count(r =>
+                            r.ClaseId == c.Id &&
+                            r.Activo == true));
+
+                    if (clienteId.HasValue)
+                    {
+                        query = query.Where(c =>
+                            !_context.Reservas.Any(r =>
+                                r.ClaseId == c.Id &&
+                                r.UsuarioId == clienteId.Value &&
+                                r.Activo == true));
+                    }
+
+                    break;
+
+                case "finalizadas":
+                    query = query.Where(c => c.Fecha < hoy);
+                    break;
+
+                case "futuras":
+                    query = query.Where(c => c.Fecha >= hoy);
+                    break;
+
+                case "completas":
+                    query = query.Where(c =>
+                        (c.CapacidadMaxima ?? 0) <= _context.Reservas.Count(r =>
+                            r.ClaseId == c.Id &&
+                            r.Activo == true));
+                    break;
+
+                case "reservadas":
+                    if (clienteId.HasValue)
+                    {
+                        query = query.Where(c =>
+                            _context.Reservas.Any(r =>
+                                r.ClaseId == c.Id &&
+                                r.UsuarioId == clienteId.Value &&
+                                r.Activo == true));
+                    }
+                    break;
+
+                case "todas":
+                default:
+                    break;
+            }
+        }
+
         return await query
             .OrderBy(c => c.Fecha)
             .ThenBy(c => c.HoraInicio)
@@ -163,8 +223,12 @@ public class ClaseService : IClaseService
     public async Task<int> CountFiltradasAsync(
         string search,
         int? entrenadorId,
-        int? especialidadId)
+        int? especialidadId,
+        string? estado,
+        int? clienteId)
     {
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+
         var query = _context.Clases
             .AsNoTracking()
             .Where(c => c.Activo == true)
@@ -183,6 +247,62 @@ public class ClaseService : IClaseService
         if (especialidadId.HasValue)
         {
             query = query.Where(c => c.EspecialidadId == especialidadId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            estado = estado.ToLower();
+
+            switch (estado)
+            {
+                case "disponibles":
+                    query = query.Where(c =>
+                        c.Fecha >= hoy &&
+                        (c.CapacidadMaxima ?? 0) > _context.Reservas.Count(r =>
+                            r.ClaseId == c.Id &&
+                            r.Activo == true));
+
+                    if (clienteId.HasValue)
+                    {
+                        query = query.Where(c =>
+                            !_context.Reservas.Any(r =>
+                                r.ClaseId == c.Id &&
+                                r.UsuarioId == clienteId.Value &&
+                                r.Activo == true));
+                    }
+
+                    break;
+
+                case "finalizadas":
+                    query = query.Where(c => c.Fecha < hoy);
+                    break;
+
+                case "futuras":
+                    query = query.Where(c => c.Fecha >= hoy);
+                    break;
+
+                case "completas":
+                    query = query.Where(c =>
+                        (c.CapacidadMaxima ?? 0) <= _context.Reservas.Count(r =>
+                            r.ClaseId == c.Id &&
+                            r.Activo == true));
+                    break;
+
+                case "reservadas":
+                    if (clienteId.HasValue)
+                    {
+                        query = query.Where(c =>
+                            _context.Reservas.Any(r =>
+                                r.ClaseId == c.Id &&
+                                r.UsuarioId == clienteId.Value &&
+                                r.Activo == true));
+                    }
+                    break;
+
+                case "todas":
+                default:
+                    break;
+            }
         }
 
         return await query.CountAsync();
