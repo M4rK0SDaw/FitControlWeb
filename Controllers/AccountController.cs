@@ -330,6 +330,8 @@ public class AccountController : Controller
 
     private async Task EnviarEmailAsync(string to, string subject, string htmlBody)
     {
+    try
+        {
         var from = _configuration["Email:From"];
         var user = _configuration["Email:User"];
         var password = _configuration["Email:Password"];
@@ -353,8 +355,7 @@ public class AccountController : Controller
         message.To.Add(to);
 
         //await client.SendMailAsync(message);
-        try
-        {
+        
             await client.SendMailAsync(mail);
         }
         catch (Exception ex)
