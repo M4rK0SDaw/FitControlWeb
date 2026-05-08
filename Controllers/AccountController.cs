@@ -352,7 +352,16 @@ public class AccountController : Controller
 
         message.To.Add(to);
 
-        await client.SendMailAsync(message);
+        //await client.SendMailAsync(message);
+        try
+        {
+            await client.SendMailAsync(mail);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error enviando email: " + ex.Message, ex);
+        }
+
     }
 
 }
