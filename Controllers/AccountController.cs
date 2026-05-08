@@ -327,8 +327,6 @@ public class AccountController : Controller
         TempData["Success"] = "Contraseña actualizada correctamente. Ya puedes iniciar sesión.";
         return RedirectToAction(nameof(Login));
     }
-using System.Net;
-using System.Net.Mail;
 
 public async Task EnviarEmailAsync(string destinatario, string asunto, string cuerpo)
 {
