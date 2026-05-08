@@ -327,7 +327,52 @@ public class AccountController : Controller
         TempData["Success"] = "Contraseña actualizada correctamente. Ya puedes iniciar sesión.";
         return RedirectToAction(nameof(Login));
     }
+using System.Net;
+using System.Net.Mail;
 
+public async Task EnviarEmailAsync(string destinatario, string asunto, string cuerpo)
+{
+ try
+    {
+    var smtp = _configuration["Email:Smtp"];
+    var port = int.Parse(_configuration["Email:Port"] ?? "587");
+    var user = _configuration["Email:User"];
+    var password = _configuration["Email:Password"];
+    var from = _configuration["Email:From"];
+
+    Console.WriteLine($"[EMAIL] Intentando enviar a: {destinatario}");
+    Console.WriteLine($"[EMAIL] SMTP: {smtp}:{port}");
+    Console.WriteLine($"[EMAIL] User: {user}");
+    Console.WriteLine($"[EMAIL] From: {from}");
+
+    using var client = new SmtpClient(smtp, port)
+    {
+        Credentials = new NetworkCredential(user, password),
+        EnableSsl = true
+    };
+
+    using var mail = new MailMessage
+    {
+        From = new MailAddress(from!),
+        Subject = asunto,
+        Body = cuerpo,
+        IsBodyHtml = true
+    };
+
+    mail.To.Add(destinatario);
+
+   
+        await client.SendMailAsync(mail);
+        Console.WriteLine("[EMAIL] Enviado correctamente.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("[EMAIL ERROR] " + ex.ToString());
+        throw;
+    }
+}
+    
+/*
     private async Task EnviarEmailAsync(string to, string subject, string htmlBody)
     {
     try
@@ -363,6 +408,6 @@ public class AccountController : Controller
             throw new Exception("Error enviando email: " + ex.Message, ex);
         }
 
-    }
+    }*/
 
 }
