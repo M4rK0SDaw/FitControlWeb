@@ -219,6 +219,8 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
     {
+    try
+{
         if (!ModelState.IsValid)
             return View(model);
 
@@ -258,7 +260,7 @@ public class AccountController : Controller
         <p>Este enlace caduca en 30 minutos.</p>
         <p>Si no solicitaste este cambio, ignora este mensaje.</p>
     ";
-
+/*
         await EnviarEmailAsync(
             usuario.Email,
             "Restablecer contraseña - FitControl Web",
@@ -266,6 +268,26 @@ public class AccountController : Controller
 
         TempData["Success"] = "Si el email existe, recibirás instrucciones para restablecer la contraseña.";
         return RedirectToAction(nameof(Login));
+        */
+
+    await EnviarEmailAsync(
+        usuario.Email,
+        "Restablecer contraseña - FitControl Web",
+        body);
+
+    TempData["Success"] = "Si el email existe, recibirás instrucciones para restablecer la contraseña.";
+    return RedirectToAction(nameof(Login));
+}
+catch (Exception ex)
+{
+    Console.WriteLine("[FORGOT PASSWORD ERROR]");
+    Console.WriteLine(ex.ToString());
+
+    TempData["Error"] = "No se pudo enviar el correo de recuperación. Revisa la configuración del email en Azure.";
+    return RedirectToAction(nameof(ForgotPassword));
+}
+
+        
     }
 
     [HttpGet]
@@ -328,20 +350,31 @@ public class AccountController : Controller
         return RedirectToAction(nameof(Login));
     }
 
-public async Task EnviarEmailAsync(string destinatario, string asunto, string cuerpo)
+private async Task EnviarEmailAsync(string destinatario, string asunto, string cuerpo)
 {
- try
-    {
     var smtp = _configuration["Email:Smtp"];
-    var port = int.Parse(_configuration["Email:Port"] ?? "587");
+    var portText = _configuration["Email:Port"];
     var user = _configuration["Email:User"];
     var password = _configuration["Email:Password"];
     var from = _configuration["Email:From"];
 
     Console.WriteLine($"[EMAIL] Intentando enviar a: {destinatario}");
-    Console.WriteLine($"[EMAIL] SMTP: {smtp}:{port}");
-    Console.WriteLine($"[EMAIL] User: {user}");
-    Console.WriteLine($"[EMAIL] From: {from}");
+    Console.WriteLine($"[EMAIL] SMTP: {smtp}");
+    Console.WriteLine($"[EMAIL] PORT: {portText}");
+    Console.WriteLine($"[EMAIL] USER: {user}");
+    Console.WriteLine($"[EMAIL] FROM: {from}");
+    Console.WriteLine($"[EMAIL] PASSWORD EMPTY: {string.IsNullOrWhiteSpace(password)}");
+
+    if (string.IsNullOrWhiteSpace(smtp) ||
+        string.IsNullOrWhiteSpace(portText) ||
+        string.IsNullOrWhiteSpace(user) ||
+        string.IsNullOrWhiteSpace(password) ||
+        string.IsNullOrWhiteSpace(from))
+    {
+        throw new InvalidOperationException("Falta configuración SMTP en Azure.");
+    }
+
+    var port = int.Parse(portText);
 
     using var client = new SmtpClient(smtp, port)
     {
@@ -351,7 +384,7 @@ public async Task EnviarEmailAsync(string destinatario, string asunto, string cu
 
     using var mail = new MailMessage
     {
-        From = new MailAddress(from!),
+        From = new MailAddress(from),
         Subject = asunto,
         Body = cuerpo,
         IsBodyHtml = true
@@ -359,17 +392,10 @@ public async Task EnviarEmailAsync(string destinatario, string asunto, string cu
 
     mail.To.Add(destinatario);
 
-   
-        await client.SendMailAsync(mail);
-        Console.WriteLine("[EMAIL] Enviado correctamente.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("[EMAIL ERROR] " + ex.ToString());
-        throw;
-    }
+    await client.SendMailAsync(mail);
+
+    Console.WriteLine("[EMAIL] Enviado correctamente.");
 }
-    
 /*
     private async Task EnviarEmailAsync(string to, string subject, string htmlBody)
     {
