@@ -1,4 +1,3 @@
-﻿using FitControlWeb.Data;
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
@@ -6,7 +5,6 @@ using FitControlWeb.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 
 namespace FitControlWeb.Controllers;
 
@@ -14,12 +12,10 @@ namespace FitControlWeb.Controllers;
 public class SuscripcionesController : Controller
 {
     private readonly ISuscripcionService _suscripcionService;
-    private readonly FitControlDbContext _context;
 
-    public SuscripcionesController(ISuscripcionService suscripcionService, FitControlDbContext context)
+    public SuscripcionesController(ISuscripcionService suscripcionService)
     {
         _suscripcionService = suscripcionService;
-        _context = context;
     }
 
     public async Task<IActionResult> Index(
@@ -31,15 +27,8 @@ public class SuscripcionesController : Controller
         page = page < 1 ? 1 : page;
         pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
 
-        var suscripciones = await _suscripcionService.GetFiltradasAsync(
-            search,
-            estado,
-            page,
-            pageSize);
-
-        var totalItems = await _suscripcionService.CountFiltradasAsync(
-            search,
-            estado);
+        var suscripciones = await _suscripcionService.GetFiltradasAsync(search, estado, page, pageSize);
+        var totalItems = await _suscripcionService.CountFiltradasAsync(search, estado);
 
         ViewBag.Search = search;
         ViewBag.Estado = estado;
@@ -58,13 +47,10 @@ public class SuscripcionesController : Controller
         if (suscripcion == null)
             return NotFound();
 
-        var factura = await _context.Facturas
-            .FirstOrDefaultAsync(f =>
-                f.Activo == true &&
-                f.NumeroFactura.EndsWith($"-SUS-{id}"));
+        var facturaId = await _suscripcionService.GetFacturaIdAsync(id);
 
-        ViewBag.FacturaId = factura?.Id;
-        ViewBag.TieneFactura = factura != null;
+        ViewBag.FacturaId = facturaId;
+        ViewBag.TieneFactura = facturaId.HasValue;
 
         return View(suscripcion);
     }
@@ -79,39 +65,14 @@ public class SuscripcionesController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(SuscripcionCreateViewModel model)
-    {        
-
+    {
         if (!ModelState.IsValid)
         {
             await CargarCombosAsync();
             return View(model);
         }
 
-        var tipo = await _context.TipoSuscripciones
-            .FirstOrDefaultAsync(t =>
-                t.Id == model.TipoSuscripcionId &&
-                t.Activo == true);
-
-        if (tipo == null)
-        {
-            ModelState.AddModelError(
-                "TipoSuscripcionId",
-                "Debes seleccionar un tipo de suscripción válido.");
-
-            await CargarCombosAsync();
-            return View(model);
-        }
-
-        var suscripcion = new Suscripcion
-        {
-            UsuarioId = model.UsuarioId,
-            TipoSuscripcionId = model.TipoSuscripcionId,
-            FechaInicio = model.FechaInicio.Date,
-            FechaFin = model.FechaInicio.Date.AddDays(tipo.DuracionDias),
-            Activa = true
-        };
-
-        var result = await _suscripcionService.CreateAsync(suscripcion);
+        var result = await _suscripcionService.CreateFromViewModelAsync(model);
 
         if (!result.Success)
         {
@@ -156,30 +117,10 @@ public class SuscripcionesController : Controller
             return View(model);
         }
 
-        var suscripcion = await _suscripcionService.GetByIdAsync(model.Id);
+        var result = await _suscripcionService.UpdateFromViewModelAsync(model);
 
-        if (suscripcion == null)
+        if (result.Code == "SUSCRIPCION_NO_EXISTE")
             return NotFound();
-
-        var tipo = await _context.TipoSuscripciones
-                  .FirstOrDefaultAsync(t => t.Id == model.TipoSuscripcionId && t.Activo == true);
-
-        if (tipo == null)
-        {
-            ModelState.AddModelError("TipoSuscripcionId", "Debes seleccionar un tipo de suscripción válido.");
-            await CargarCombosAsync();
-            return View(model);
-        }
-
-
-        suscripcion.UsuarioId = model.UsuarioId;
-        suscripcion.TipoSuscripcionId = model.TipoSuscripcionId;
-        suscripcion.FechaInicio = model.FechaInicio.Date;
-        //suscripcion.FechaFin = model.FechaFin.Date;
-        suscripcion.FechaFin = model.FechaInicio.Date.AddDays(tipo.DuracionDias);
-        suscripcion.Activa = model.Activa;
-    
-        var result = await _suscripcionService.UpdateAsync(suscripcion);
 
         if (!result.Success)
         {
@@ -200,9 +141,7 @@ public class SuscripcionesController : Controller
 
         TempData[result.Success ? "Success" : "Error"] = result.Message;
 
-        return !string.IsNullOrWhiteSpace(returnUrl)
-            ? Redirect(returnUrl)
-            : RedirectToAction(nameof(Index));
+        return RedirectLocalOrIndex(returnUrl);
     }
 
     [HttpPost]
@@ -213,34 +152,16 @@ public class SuscripcionesController : Controller
 
         TempData[result.Success ? "Success" : "Error"] = result.Message;
 
-        return !string.IsNullOrWhiteSpace(returnUrl)
-            ? Redirect(returnUrl)
-            : RedirectToAction(nameof(Index));
+        return RedirectLocalOrIndex(returnUrl);
     }
-   
+
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportCsv(string? search, string? estado)
     {
         var suscripciones = await _suscripcionService.GetFiltradasAsync(search, estado, 1, int.MaxValue);
+        var headers = new[] { "Cliente", "Email", "Tipo", "Precio", "Inicio", "Fin", "Estado" };
 
-        var headers = new[]
-        {
-        "Cliente", "Email", "Tipo", "Precio", "Inicio", "Fin", "Estado"
-    };
-
-        var bytes = ExportHelper.ToCsv(
-            suscripciones,
-            headers,
-            s => new[]
-            {
-            $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
-            s.Usuario?.Email ?? "",
-            s.TipoSuscripcion?.Nombre ?? "",
-            s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00",
-            s.FechaInicio.ToString("dd/MM/yyyy"),
-            s.FechaFin.ToString("dd/MM/yyyy"),
-            s.Activa == true ? "Activa" : "Cancelada"
-            });
+        var bytes = ExportHelper.ToCsv(suscripciones, headers, SuscripcionExportRow);
 
         return File(bytes, "text/csv", "suscripciones.csv");
     }
@@ -249,51 +170,28 @@ public class SuscripcionesController : Controller
     public async Task<IActionResult> ExportExcel(string? search, string? estado)
     {
         var suscripciones = await _suscripcionService.GetFiltradasAsync(search, estado, 1, int.MaxValue);
-
-        var hoy = DateTime.Today;
-
-        var filters = new[]
-        {
-        $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-        $"Estado: {(string.IsNullOrWhiteSpace(estado) ? "Todos" : estado)}"
-    };
-
-        var summary = new List<ReportSummaryItem>
-    {
-        new() { Label = "Total", Value = suscripciones.Count.ToString() },
-        new() { Label = "Activas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin >= hoy).ToString() },
-        new() { Label = "Vencidas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin < hoy).ToString() },
-        new() { Label = "Canceladas", Value = suscripciones.Count(s => s.Activa != true).ToString() }
-    };
-
-        var headers = new[]
-        {
-        "Cliente", "Email", "Tipo", "Precio", "Inicio", "Fin", "Estado"
-    };
+        var headers = new[] { "Cliente", "Email", "Tipo", "Precio", "Inicio", "Fin", "Estado" };
 
         var bytes = ExportHelper.ToExcel(
             suscripciones,
             "Suscripciones",
             "Listado de suscripciones",
             "Suscripciones filtradas",
-            filters,
-            summary,
+            GetFiltros(search, estado),
+            GetResumen(suscripciones),
             headers,
             s => new object[]
             {
-            $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
-            s.Usuario?.Email ?? "",
-            s.TipoSuscripcion?.Nombre ?? "",
-            s.TipoSuscripcion?.Precio ?? 0,
-            s.FechaInicio.ToString("dd/MM/yyyy"),
-            s.FechaFin.ToString("dd/MM/yyyy"),
-            s.Activa == true ? "Activa" : "Cancelada"
+                $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
+                s.Usuario?.Email ?? "",
+                s.TipoSuscripcion?.Nombre ?? "",
+                s.TipoSuscripcion?.Precio ?? 0,
+                s.FechaInicio.ToString("dd/MM/yyyy"),
+                s.FechaFin.ToString("dd/MM/yyyy"),
+                s.Activa == true ? "Activa" : "Cancelada"
             });
 
-        return File(
-            bytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "suscripciones.xlsx");
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "suscripciones.xlsx");
     }
 
     [Authorize(Roles = "Administrador")]
@@ -302,43 +200,23 @@ public class SuscripcionesController : Controller
         try
         {
             var suscripciones = await _suscripcionService.GetFiltradasAsync(search, estado, 1, int.MaxValue);
-
-            var hoy = DateTime.Today;
-
-            var filters = new[]
-            {
-            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"Estado: {(string.IsNullOrWhiteSpace(estado) ? "Todos" : estado)}"
-        };
-
-            var summary = new List<ReportSummaryItem>
-        {
-            new() { Label = "Total", Value = suscripciones.Count.ToString() },
-            new() { Label = "Activas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin >= hoy).ToString() },
-            new() { Label = "Vencidas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin < hoy).ToString() },
-            new() { Label = "Canceladas", Value = suscripciones.Count(s => s.Activa != true).ToString() }
-        };
-
-            var headers = new[]
-            {
-            "Cliente", "Tipo", "Precio", "Inicio", "Fin", "Estado"
-        };
+            var headers = new[] { "Cliente", "Tipo", "Precio", "Inicio", "Fin", "Estado" };
 
             var bytes = ExportHelper.ToPdf(
                 suscripciones,
                 "Listado de suscripciones",
                 "Suscripciones filtradas",
-                filters,
-                summary,
+                GetFiltros(search, estado),
+                GetResumen(suscripciones),
                 headers,
                 s => new[]
                 {
-                $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
-                s.TipoSuscripcion?.Nombre ?? "",
-                $"{s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00"} €",
-                s.FechaInicio.ToString("dd/MM/yyyy"),
-                s.FechaFin.ToString("dd/MM/yyyy"),
-                s.Activa == true ? "Activa" : "Cancelada"
+                    $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
+                    s.TipoSuscripcion?.Nombre ?? "",
+                    $"{s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00"} €",
+                    s.FechaInicio.ToString("dd/MM/yyyy"),
+                    s.FechaFin.ToString("dd/MM/yyyy"),
+                    s.Activa == true ? "Activa" : "Cancelada"
                 });
 
             return File(bytes, "application/pdf", "suscripciones.pdf");
@@ -350,38 +228,21 @@ public class SuscripcionesController : Controller
         }
     }
 
-
-
     private async Task CargarCombosAsync()
     {
-        var usuarios = await _context.Usuarios
-            .Include(u => u.Rol)
-            .Where(u =>
-                u.Activo == true &&
-                u.Rol.Nombre == "Cliente")
+        var usuarios = (await _suscripcionService.GetClientesActivosAsync())
             .Select(u => new
             {
                 u.Id,
                 NombreCompleto = u.Nombre + " " + u.Apellidos + " - " + u.Email
             })
             .OrderBy(u => u.NombreCompleto)
-            .ToListAsync();
+            .ToList();
 
-        ViewBag.Usuarios = new SelectList(
-            usuarios,
-            "Id",
-            "NombreCompleto");
+        var tipos = await _suscripcionService.GetTiposActivosAsync();
 
-        var tipos = await _context.TipoSuscripciones
-            .Where(t => t.Activo == true)
-            .OrderBy(t => t.Nombre)
-            .ToListAsync();
-
-        ViewBag.TiposSuscripcion = new SelectList(
-            tipos,
-            "Id",
-            "Nombre");
-
+        ViewBag.Usuarios = new SelectList(usuarios, "Id", "NombreCompleto");
+        ViewBag.TiposSuscripcion = new SelectList(tipos, "Id", "Nombre");
         ViewBag.TiposSuscripcionData = tipos;
     }
 
@@ -392,18 +253,58 @@ public class SuscripcionesController : Controller
             case "SUSCRIPCION_DUPLICADA":
                 ModelState.AddModelError("UsuarioId", message);
                 break;
-
             case "TIPO_NO_VALIDO":
                 ModelState.AddModelError("TipoSuscripcionId", message);
                 break;
-
             case "FECHAS_INVALIDAS":
                 ModelState.AddModelError("FechaFin", message);
                 break;
-
             default:
                 ModelState.AddModelError("", message);
                 break;
         }
+    }
+
+    private static string[] SuscripcionExportRow(Suscripcion s)
+    {
+        return new[]
+        {
+            $"{s.Usuario?.Nombre ?? ""} {s.Usuario?.Apellidos ?? ""}",
+            s.Usuario?.Email ?? "",
+            s.TipoSuscripcion?.Nombre ?? "",
+            s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00",
+            s.FechaInicio.ToString("dd/MM/yyyy"),
+            s.FechaFin.ToString("dd/MM/yyyy"),
+            s.Activa == true ? "Activa" : "Cancelada"
+        };
+    }
+
+    private static string[] GetFiltros(string? search, string? estado)
+    {
+        return new[]
+        {
+            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
+            $"Estado: {(string.IsNullOrWhiteSpace(estado) ? "Todos" : estado)}"
+        };
+    }
+
+    private static List<ReportSummaryItem> GetResumen(List<Suscripcion> suscripciones)
+    {
+        var hoy = DateTime.Today;
+
+        return new()
+        {
+            new() { Label = "Total", Value = suscripciones.Count.ToString() },
+            new() { Label = "Activas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin >= hoy).ToString() },
+            new() { Label = "Vencidas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin < hoy).ToString() },
+            new() { Label = "Canceladas", Value = suscripciones.Count(s => s.Activa != true).ToString() }
+        };
+    }
+
+    private IActionResult RedirectLocalOrIndex(string? returnUrl)
+    {
+        return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl)
+            : RedirectToAction(nameof(Index));
     }
 }

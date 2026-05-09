@@ -2,8 +2,8 @@
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
+using FitControlWeb.ViewModels;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.Blazor;
 
 namespace FitControlWeb.Services.Implementations;
 
@@ -122,14 +122,13 @@ public class SuscripcionService : ISuscripcionService
     {
         var suscripcion = await _context.Suscripciones.FindAsync(id);
 
+        if (suscripcion == null)
+            return ServiceResult.Fail("La suscripción no existe.", "SUSCRIPCION_NO_EXISTE");
+
         if (suscripcion.FechaFin < DateTime.Today)
         {            
             return ServiceResult.Fail("La suscripción vencida no puede ser cancelada.", "SUSCRIPCION_NO_EXISTE");
         }
-
-
-        if (suscripcion == null)
-            return ServiceResult.Fail("La suscripción no existe.", "SUSCRIPCION_NO_EXISTE");
 
         if (suscripcion.Activa != true)
             return ServiceResult.Fail("La suscripción ya está cancelada.", "SUSCRIPCION_CANCELADA");
@@ -164,5 +163,75 @@ public class SuscripcionService : ISuscripcionService
         await _context.SaveChangesAsync();
 
         return ServiceResult.Ok("Suscripción reactivada correctamente.");
+    }
+
+    public async Task<int?> GetFacturaIdAsync(int suscripcionId)
+    {
+        var factura = await _context.Facturas
+            .FirstOrDefaultAsync(f =>
+                f.Activo == true &&
+                f.NumeroFactura.EndsWith($"-SUS-{suscripcionId}"));
+
+        return factura?.Id;
+    }
+
+    public async Task<ServiceResult> CreateFromViewModelAsync(SuscripcionCreateViewModel model)
+    {
+        var tipo = await _context.TipoSuscripciones
+            .FirstOrDefaultAsync(t => t.Id == model.TipoSuscripcionId && t.Activo == true);
+
+        if (tipo == null)
+            return ServiceResult.Fail("Debes seleccionar un tipo de suscripción válido.", "TIPO_NO_VALIDO");
+
+        var suscripcion = new Suscripcion
+        {
+            UsuarioId = model.UsuarioId,
+            TipoSuscripcionId = model.TipoSuscripcionId,
+            FechaInicio = model.FechaInicio.Date,
+            FechaFin = model.FechaInicio.Date.AddDays(tipo.DuracionDias),
+            Activa = true
+        };
+
+        return await CreateAsync(suscripcion);
+    }
+
+    public async Task<ServiceResult> UpdateFromViewModelAsync(SuscripcionEditViewModel model)
+    {
+        var suscripcion = await GetByIdAsync(model.Id);
+
+        if (suscripcion == null)
+            return ServiceResult.Fail("La suscripción no existe.", "SUSCRIPCION_NO_EXISTE");
+
+        var tipo = await _context.TipoSuscripciones
+            .FirstOrDefaultAsync(t => t.Id == model.TipoSuscripcionId && t.Activo == true);
+
+        if (tipo == null)
+            return ServiceResult.Fail("Debes seleccionar un tipo de suscripción válido.", "TIPO_NO_VALIDO");
+
+        suscripcion.UsuarioId = model.UsuarioId;
+        suscripcion.TipoSuscripcionId = model.TipoSuscripcionId;
+        suscripcion.FechaInicio = model.FechaInicio.Date;
+        suscripcion.FechaFin = model.FechaInicio.Date.AddDays(tipo.DuracionDias);
+        suscripcion.Activa = model.Activa;
+
+        return await UpdateAsync(suscripcion);
+    }
+
+    public async Task<List<Usuario>> GetClientesActivosAsync()
+    {
+        return await _context.Usuarios
+            .Include(u => u.Rol)
+            .Where(u => u.Activo == true && u.Rol.Nombre == "Cliente")
+            .OrderBy(u => u.Nombre)
+            .ThenBy(u => u.Apellidos)
+            .ToListAsync();
+    }
+
+    public async Task<List<TipoSuscripcion>> GetTiposActivosAsync()
+    {
+        return await _context.TipoSuscripciones
+            .Where(t => t.Activo == true)
+            .OrderBy(t => t.Nombre)
+            .ToListAsync();
     }
 }

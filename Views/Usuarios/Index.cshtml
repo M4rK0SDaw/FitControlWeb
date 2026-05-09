@@ -262,6 +262,29 @@
 
                 <nav>
                     <ul class="pagination mb-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-rolId="@ViewBag.RolId"
+                               asp-route-activo="@ViewBag.Activo">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage - 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-rolId="@ViewBag.RolId"
+                               asp-route-activo="@ViewBag.Activo">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
 
                         @for (int i = startPage; i <= endPage; i++)
                         {
@@ -277,6 +300,30 @@
                                 </a>
                             </li>
                         }
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@(currentPage + 1)"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-rolId="@ViewBag.RolId"
+                               asp-route-activo="@ViewBag.Activo">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@totalPages"
+                               asp-route-pageSize="@pageSize"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-rolId="@ViewBag.RolId"
+                               asp-route-activo="@ViewBag.Activo">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
 
                     </ul>
                 </nav>

@@ -10,8 +10,9 @@ public class DashboardViewModel
     public int TotalEntrenadores { get; set; }
     public int UsuariosActivos { get; set; }
     public int UsuariosInactivos { get; set; }
+    public int ClientesSinSuscripcionActiva { get; set; }
 
-    // 🏋 Clases
+    //  Clases
     public int TotalClases { get; set; }
     public int ClasesActivas { get; set; }
     public int ClasesHoy { get; set; }
@@ -35,6 +36,10 @@ public class DashboardViewModel
     public List<Clase> ClasesCasiLlenas { get; set; } = new();
     public List<Clase> ClasesBajaOcupacion { get; set; } = new();
 
+    // Suscripciones
+    public int SuscripcionesActivas { get; set; }
+    public int SuscripcionesVencidas { get; set; }
+    public int SuscripcionesNuevasMes { get; set; }
 
     // Económico
     public int TotalFacturas { get; set; }

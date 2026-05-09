@@ -2,6 +2,7 @@
 using FitControlWeb.Data;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
+using FitControlWeb.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace FitControlWeb.Services.Implementations;
@@ -9,10 +10,12 @@ namespace FitControlWeb.Services.Implementations;
 public class UsuarioService : IUsuarioService
 {
     private readonly FitControlDbContext _context;
+    private readonly IProfilePhotoService _profilePhotoService;
 
-    public UsuarioService(FitControlDbContext context)
+    public UsuarioService(FitControlDbContext context, IProfilePhotoService profilePhotoService)
     {
         _context = context;
+        _profilePhotoService = profilePhotoService;
     }
 
     public async Task<List<Usuario>> GetAllAsync()
@@ -201,5 +204,88 @@ public class UsuarioService : IUsuarioService
         bool? activo)
     {
         return await QueryUsuarios(search, rolId, activo).CountAsync();
+    }
+
+    public async Task<List<Rol>> GetRolesAsync()
+    {
+        return await _context.Rols
+            .OrderBy(r => r.Nombre)
+            .ToListAsync();
+    }
+
+    public async Task<(int TotalUsuarios, int UsuariosActivos, int UsuariosInactivos, int TotalClientes, int TotalEntrenadores)> GetKpisAsync()
+    {
+        var totalUsuarios = await _context.Usuarios.CountAsync();
+        var usuariosActivos = await _context.Usuarios.CountAsync(u => u.Activo == true);
+        var usuariosInactivos = await _context.Usuarios.CountAsync(u => u.Activo != true);
+        var totalClientes = await _context.Usuarios.CountAsync(u => u.Rol.Nombre == "Cliente");
+        var totalEntrenadores = await _context.Usuarios.CountAsync(u => u.Rol.Nombre == "Entrenador");
+
+        return (totalUsuarios, usuariosActivos, usuariosInactivos, totalClientes, totalEntrenadores);
+    }
+
+    public async Task<ServiceResult<Usuario>> CreateFromViewModelAsync(UsuarioCreateViewModel model, IFormFile? foto)
+    {
+        var usuario = new Usuario
+        {
+            Nombre = model.Nombre.Trim(),
+            Apellidos = model.Apellidos.Trim(),
+            Email = model.Email.Trim(),
+            Telefono = model.Telefono,
+            RolId = model.RolId,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+        };
+
+        var result = await CreateAsync(usuario);
+
+        if (!result.Success)
+            return ServiceResult<Usuario>.Fail(result.Message, result.Code);
+
+        var fotoResult = await _profilePhotoService.GuardarFotoUsuarioAsync(usuario.Id, foto);
+
+        if (!fotoResult.Success)
+            return ServiceResult<Usuario>.Fail(fotoResult.Message, fotoResult.Code);
+
+        return ServiceResult<Usuario>.Ok(usuario, result.Message);
+    }
+
+    public async Task<ServiceResult> UpdateFromViewModelAsync(UsuarioEditViewModel model)
+    {
+        var usuario = await GetByIdAsync(model.Id);
+
+        if (usuario == null)
+            return ServiceResult.Fail("El usuario no existe.", "USUARIO");
+
+        usuario.Nombre = model.Nombre;
+        usuario.Apellidos = model.Apellidos;
+        usuario.Email = model.Email;
+        usuario.Telefono = model.Telefono;
+        usuario.RolId = model.RolId;
+        usuario.Activo = model.Activo;
+
+        if (!string.IsNullOrWhiteSpace(model.NuevaPassword))
+            usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NuevaPassword);
+
+        var result = await UpdateAsync(usuario);
+
+        if (!result.Success)
+            return result;
+
+        var fotoResult = await _profilePhotoService.GuardarFotoUsuarioAsync(usuario.Id, model.Foto);
+
+        return fotoResult.Success ? result : fotoResult;
+    }
+
+    public async Task<ServiceResult> GuardarFotoAsync(int id, IFormFile? foto)
+    {
+        var usuario = await GetByIdAsync(id);
+
+        if (usuario == null)
+            return ServiceResult.Fail("El usuario no existe.", "USUARIO");
+
+        if (foto == null || foto.Length == 0)
+            return ServiceResult.Fail("Debes seleccionar una imagen.", "FOTO");
+
+        return await _profilePhotoService.GuardarFotoUsuarioAsync(id, foto);
     }
 }

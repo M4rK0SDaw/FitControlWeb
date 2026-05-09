@@ -67,6 +67,10 @@ builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IClienteDashboardService, ClienteDashboardService>();
+builder.Services.AddScoped<IEntrenadorDashboardService, EntrenadorDashboardService>();
+builder.Services.AddScoped<IProfilePhotoService, ProfilePhotoService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IClaseService, ClaseService>();
 builder.Services.AddScoped<IReservaService, ReservaService>();
@@ -77,6 +81,8 @@ builder.Services.AddScoped<IChatService, ChatService>();
 // builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<ITipoSuscripcionService, TipoSuscripcionService>();
 builder.Services.AddScoped<IMetodoPagoService, MetodoPagoService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 
 
 var app = builder.Build();

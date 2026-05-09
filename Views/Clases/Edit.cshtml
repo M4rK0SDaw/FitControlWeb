@@ -17,6 +17,7 @@
     <form asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
         <input asp-for="Id" type="hidden" />
+        <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
 
         <div class="row g-3">
             <div class="col-md-6">
@@ -60,6 +61,15 @@
             </div>
         </div>
 
-        <button class="btn btn-orange mt-4">Guardar cambios</button>
+        <div class="d-flex justify-content-end gap-2 flex-wrap mt-4">
+            <a href="@(string.IsNullOrWhiteSpace(ViewBag.ReturnUrl as string) ? Url.Action("Index", "Clases") : ViewBag.ReturnUrl)"
+               class="btn btn-outline-secondary">
+                Cancelar
+            </a>
+
+            <button class="btn btn-orange">
+                <i class="bi bi-save me-1"></i> Guardar cambios
+            </button>
+        </div>
     </form>
 </div>

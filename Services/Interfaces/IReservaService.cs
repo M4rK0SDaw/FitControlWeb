@@ -26,4 +26,10 @@ public interface IReservaService
 
     Task<List<Reserva>> GetFiltradasAsync(string? search, string? estado, int page, int pageSize);
     Task<int> CountFiltradasAsync(string? search, string? estado);
+    Task<List<Reserva>> GetFiltradasAsync(string? search, string? estado, int? entrenadorId, int page, int pageSize);
+    Task<int> CountFiltradasAsync(string? search, string? estado, int? entrenadorId);
+    Task<int> CountCanceladasAsync(int? entrenadorId);
+    Task<Clase?> GetClaseConReservasAsync(int claseId);
+    Task<bool> PuedeGestionarClaseAsync(int claseId, int? entrenadorId);
+    Task<bool> PuedeGestionarReservaAsync(int reservaId, int? entrenadorId);
 }

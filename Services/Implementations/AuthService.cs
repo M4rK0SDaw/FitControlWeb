@@ -1,11 +1,11 @@
-﻿using BCrypt.Net;
 using FitControlWeb.Data;
+using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace FitControlWeb.Services.Implementations;
 
@@ -32,7 +32,7 @@ public class AuthService : IAuthService
         if (usuario.Activo != true || usuario.Bloqueado == true)
             return null;
 
-        bool passwordOk = BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
+        var passwordOk = BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
 
         _context.UsuarioLoginLogs.Add(new UsuarioLoginLog
         {
@@ -61,6 +61,51 @@ public class AuthService : IAuthService
         return usuario;
     }
 
+    public async Task SignInAsync(Usuario usuario, bool rememberMe)
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+
+        if (httpContext == null)
+            return;
+
+        var refreshToken = CrearToken();
+
+        usuario.RefreshToken = refreshToken;
+        usuario.RefreshTokenExpiryTime = rememberMe
+            ? DateTime.Now.AddDays(7)
+            : DateTime.Now.AddHours(8);
+
+        await _context.SaveChangesAsync();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new(ClaimTypes.Name, usuario.Email),
+            new(ClaimTypes.Role, usuario.Rol.Nombre),
+            new("NombreCompleto", $"{usuario.Nombre} {usuario.Apellidos}"),
+            new("RefreshToken", refreshToken)
+        };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        var principal = new ClaimsPrincipal(identity);
+
+        var authProperties = new AuthenticationProperties
+        {
+            IsPersistent = rememberMe,
+            ExpiresUtc = rememberMe
+                ? DateTimeOffset.UtcNow.AddDays(7)
+                : DateTimeOffset.UtcNow.AddHours(8)
+        };
+
+        await httpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            authProperties);
+    }
+
     public async Task RegisterAsync(Usuario usuario, string password)
     {
         usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
@@ -82,7 +127,7 @@ public class AuthService : IAuthService
 
         var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (int.TryParse(userIdClaim, out int usuarioId))
+        if (int.TryParse(userIdClaim, out var usuarioId))
         {
             var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
 
@@ -97,11 +142,62 @@ public class AuthService : IAuthService
 
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
-    //public async Task LogoutAsync()
-    //{
-    //    if (_httpContextAccessor.HttpContext != null)
-    //    {
-    //        await _httpContextAccessor.HttpContext.SignOutAsync("Cookies");
-    //    }
-    //}
+
+    public async Task<ServiceResult<Usuario>> PrepararRecuperacionPasswordAsync(string email)
+    {
+        var usuario = await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.Email == email && u.Activo == true);
+
+        if (usuario == null)
+            return ServiceResult<Usuario>.Fail("Usuario no encontrado.", "USUARIO_NO_EXISTE");
+
+        usuario.RefreshToken = CrearToken();
+        usuario.RefreshTokenExpiryTime = DateTime.Now.AddHours(1);
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<Usuario>.Ok(usuario);
+    }
+
+    public async Task<bool> TokenRecuperacionValidoAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        return await _context.Usuarios.AnyAsync(u =>
+            u.RefreshToken == token &&
+            u.RefreshTokenExpiryTime != null &&
+            u.RefreshTokenExpiryTime > DateTime.Now &&
+            u.Activo == true);
+    }
+
+    public async Task<ServiceResult> ResetPasswordAsync(string token, string password)
+    {
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u =>
+            u.RefreshToken == token &&
+            u.RefreshTokenExpiryTime != null &&
+            u.RefreshTokenExpiryTime > DateTime.Now &&
+            u.Activo == true);
+
+        if (usuario == null)
+            return ServiceResult.Fail("El enlace de recuperación es inválido o ha caducado.", "TOKEN_INVALIDO");
+
+        usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+        usuario.RefreshToken = null;
+        usuario.RefreshTokenExpiryTime = null;
+        usuario.IntentosFallidos = 0;
+        usuario.Bloqueado = false;
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult.Ok("Contraseña actualizada correctamente. Ya puedes iniciar sesión.");
+    }
+
+    private static string CrearToken()
+    {
+        return Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace("+", "")
+            .Replace("/", "")
+            .Replace("=", "");
+    }
 }

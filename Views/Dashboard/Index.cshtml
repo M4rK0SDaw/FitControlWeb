@@ -80,7 +80,7 @@
 
                 <div class="col-md-3">
                     <div class="info-box">
-                        <span class="info-label">Ocupación</span>
+                        <span class="info-label">Ocupación futura</span>
                         <p class="info-value">@Model.OcupacionMedia %</p>
                         <small class="text-muted">@Model.PlazasOcupadas / @Model.PlazasTotales plazas</small>
                     </div>
@@ -102,6 +102,109 @@
                     </div>
                 </div>
             </div>
+
+            <div class="row g-4 mt-1 mb-4">
+                <div class="col-lg-7">
+                    <div class="info-box h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Próximas clases</h5>
+
+                            <a asp-controller="Clases" asp-action="Index" class="btn btn-sm btn-outline-dark">
+                                Ver calendario
+                            </a>
+                        </div>
+
+                        @if (!Model.ProximasClases.Any())
+                        {
+                            <div class="alert alert-info mb-0">No hay próximas clases programadas.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover table-modern align-middle mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Clase</th>
+                                            <th>Fecha</th>
+                                            <th>Entrenador</th>
+                                            <th>Ocupación</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var c in Model.ProximasClases)
+                                        {
+                                            var capacidad = c.CapacidadMaxima ?? 0;
+                                            var ocupadas = c.Reservas.Count(r => r.Activo == true);
+                                            var completa = capacidad > 0 && ocupadas >= capacidad;
+
+                                            <tr>
+                                                <td>
+                                                    <strong>@c.Nombre</strong>
+                                                    <small class="text-muted d-block">@c.Especialidad?.Nombre</small>
+                                                </td>
+                                                <td>
+                                                    @c.Fecha.ToString("dd/MM/yyyy")
+                                                    <small class="text-muted d-block">@c.HoraInicio - @c.HoraFin</small>
+                                                </td>
+                                                <td>@c.Entrenador?.Nombre @c.Entrenador?.Apellidos</td>
+                                                <td>
+                                                    <span class="badge @(completa ? "bg-danger" : "bg-success")">
+                                                        @ocupadas / @capacidad
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <a asp-controller="Clases"
+                                                       asp-action="Details"
+                                                       asp-route-id="@c.Id"
+                                                       class="btn btn-sm btn-outline-dark">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="info-box h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Suscripciones</h5>
+
+                            <a asp-controller="Suscripciones" asp-action="Index" class="btn btn-sm btn-outline-dark">
+                                Gestionar
+                            </a>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <span class="info-label">Activas</span>
+                                <p class="info-value mb-0 text-success">@Model.SuscripcionesActivas</p>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <span class="info-label">Vencidas o canceladas</span>
+                                <p class="info-value mb-0 text-danger">@Model.SuscripcionesVencidas</p>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <span class="info-label">Nuevas este mes</span>
+                                <p class="info-value mb-0 text-primary">@Model.SuscripcionesNuevasMes</p>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <span class="info-label">Clientes sin suscripción</span>
+                                <p class="info-value mb-0 text-warning">@Model.ClientesSinSuscripcionActiva</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <div class="info-box">
@@ -219,7 +322,7 @@
 
                 <div class="col-md-3">
                     <div class="info-box">
-                        <span class="info-label">Ocupación media</span>
+                        <span class="info-label">Ocupación futura</span>
                         <p class="info-value">@Model.OcupacionMedia %</p>
                     </div>
                 </div>

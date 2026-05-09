@@ -1,55 +1,33 @@
-﻿@if (TempData["Success"] != null)
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
-                icon: 'success',
-                title: 'Correcto',
-                text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Success"]?.ToString() ?? ""))',
-                confirmButtonColor: '#ff7a00'
-            });
-        });
-    </script>
+@{
+    var alerts = new[]
+    {
+        new { Key = "Success", Icon = "success", Title = "Correcto" },
+        new { Key = "Error", Icon = "error", Title = "Error" },
+        new { Key = "Warning", Icon = "warning", Title = "Atencion" },
+        new { Key = "Info", Icon = "info", Title = "Informacion" }
+    };
 }
 
-@if (TempData["Error"] != null)
+@foreach (var alert in alerts)
 {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Error"]?.ToString() ?? ""))',
-                confirmButtonColor: '#ff7a00'
+    if (TempData[alert.Key] != null)
+    {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: '@alert.Icon',
+                    title: '@alert.Title',
+                    text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData[alert.Key]?.ToString() ?? ""))',
+                    showConfirmButton: false,
+                    timer: 3200,
+                    timerProgressBar: true,
+                    customClass: {
+                        popup: 'fit-toast'
+                    }
+                });
             });
-        });
-    </script>
-}
-
-@if (TempData["Warning"] != null)
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Atención',
-                text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Warning"]?.ToString() ?? ""))',
-                confirmButtonColor: '#ff7a00'
-            });
-        });
-    </script>
-}
-
-@if (TempData["Info"] != null)
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
-                icon: 'info',
-                title: 'Información',
-                text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Info"]?.ToString() ?? ""))',
-                confirmButtonColor: '#ff7a00'
-            });
-        });
-    </script>
+        </script>
+    }
 }

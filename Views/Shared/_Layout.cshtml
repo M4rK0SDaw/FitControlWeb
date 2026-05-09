@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
@@ -7,9 +7,8 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/LayoutStyle.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/FitControlWeb.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -41,180 +40,230 @@
         }
     }
 
-    var nombreCompleto = User.FindFirst("NombreCompleto")?.Value ?? "U";
+    var nombreCompleto = User.FindFirst("NombreCompleto")?.Value ?? "Usuario";
+    var rolUsuario = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Usuario";
     var inicialUsuario = !string.IsNullOrWhiteSpace(nombreCompleto)
         ? nombreCompleto.Substring(0, 1).ToUpper()
         : "U";
+
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    string IsActive(string controller, string? action = null)
+    {
+        var controllerMatches = string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+        var actionMatches = string.IsNullOrWhiteSpace(action) ||
+            string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+
+        return controllerMatches && actionMatches ? "active" : "";
+    }
 }
+
     @if (User.Identity != null && User.Identity.IsAuthenticated)
     {
-        <div class="app-shell">
+        <div class="app-shell" id="appShell">
+            <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-            <aside class="sidebar">
+            <aside class="sidebar" id="appSidebar" aria-label="Menu principal">
                 <div class="sidebar-brand">
-                    <span>FIT</span><strong>CONTROL</strong>
+                    <a asp-controller="Home" asp-action="Index" class="brand-link" aria-label="FitControl Web">
+                        <span class="brand-mark"><i class="bi bi-activity"></i></span>
+                        <span class="brand-text"><span>FIT</span><strong>CONTROL</strong></span>
+                    </a>
+
+                    <button class="sidebar-icon-btn d-lg-none"
+                            type="button"
+                            id="closeMobileSidebar"
+                            aria-label="Cerrar menu">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="sidebar-profile">
+                    <div class="user-avatar sidebar-avatar">
+                        @if (!string.IsNullOrWhiteSpace(fotoUsuarioUrl))
+                        {
+                            <img src="@fotoUsuarioUrl"
+                                 alt="Foto de perfil"
+                                 class="user-avatar-img" />
+                        }
+                        else
+                        {
+                            @inicialUsuario
+                        }
+                    </div>
+
+                    <div class="sidebar-profile-text">
+                        <strong>@nombreCompleto</strong>
+                        <span>@rolUsuario</span>
+                    </div>
                 </div>
 
                 <nav class="sidebar-nav">
-                   
                     @if (User.IsInRole("Administrador"))
                     {
-                        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link">
-                            Dashboard
+                        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link @IsActive("Dashboard")" title="Dashboard">
+                            <i class="bi bi-speedometer2"></i><span>Dashboard</span>
                         </a>
 
-                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link">
-                            Usuarios
+                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link @IsActive("Usuarios")" title="Usuarios">
+                            <i class="bi bi-people"></i><span>Usuarios</span>
                         </a>
 
-                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
-                            Clases
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link @IsActive("Clases")" title="Clases">
+                            <i class="bi bi-calendar2-week"></i><span>Clases</span>
                         </a>
 
-                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link">
-                            Reservas
+                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link @IsActive("Reservas")" title="Reservas">
+                            <i class="bi bi-calendar-check"></i><span>Reservas</span>
                         </a>
 
-                        <a asp-controller="Suscripciones" asp-action="Index" class="sidebar-link">
-                            Suscripciones
-                        </a>
-                        <a asp-controller="Especialidades" asp-action="Index" class="sidebar-link">
-                            Especialidades
-                        </a>
-                        <a asp-controller="TipoSuscripciones" asp-action="Index" class="sidebar-link">
-                            Tipos de suscripción
-                        </a>
-                        <a asp-controller="MetodoPagos" asp-action="Index" class="sidebar-link">
-                            Métodos de pago
+                        <a asp-controller="Suscripciones" asp-action="Index" class="sidebar-link @IsActive("Suscripciones")" title="Suscripciones">
+                            <i class="bi bi-stars"></i><span>Suscripciones</span>
                         </a>
 
-                        <a asp-controller="Facturas" asp-action="Index" class="sidebar-link">
-                            Facturas
+                        <a asp-controller="Especialidades" asp-action="Index" class="sidebar-link @IsActive("Especialidades")" title="Especialidades">
+                            <i class="bi bi-lightning-charge"></i><span>Especialidades</span>
+                        </a>
+
+                        <a asp-controller="TipoSuscripciones" asp-action="Index" class="sidebar-link @IsActive("TipoSuscripciones")" title="Tipos de suscripcion">
+                            <i class="bi bi-tags"></i><span>Tipos de suscripcion</span>
+                        </a>
+
+                        <a asp-controller="MetodoPagos" asp-action="Index" class="sidebar-link @IsActive("MetodoPagos")" title="Metodos de pago">
+                            <i class="bi bi-credit-card-2-front"></i><span>Metodos de pago</span>
+                        </a>
+
+                        <a asp-controller="Facturas" asp-action="Index" class="sidebar-link @IsActive("Facturas")" title="Facturas">
+                            <i class="bi bi-receipt"></i><span>Facturas</span>
                         </a>
                     }
 
                     @if (User.IsInRole("Cliente"))
                     {
-                        <a asp-controller="ClienteDashboard" asp-action="Index" class="sidebar-link">
-                            Mi panel
+                        <a asp-controller="ClienteDashboard" asp-action="Index" class="sidebar-link @IsActive("ClienteDashboard", "Index")" title="Mi panel">
+                            <i class="bi bi-house-heart"></i><span>Mi panel</span>
                         </a>
 
-                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
-                            Clases disponibles
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link @IsActive("Clases")" title="Clases disponibles">
+                            <i class="bi bi-calendar2-plus"></i><span>Clases disponibles</span>
                         </a>
 
-                        <a asp-controller="Reservas" asp-action="MisReservas" class="sidebar-link">
-                            Mis reservas
+                        <a asp-controller="Reservas" asp-action="MisReservas" class="sidebar-link @IsActive("Reservas", "MisReservas")" title="Mis reservas">
+                            <i class="bi bi-bookmark-check"></i><span>Mis reservas</span>
                         </a>
 
-                        <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="sidebar-link">
-                            Mis facturas
-                        </a>
-                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
-                            Reservar clase
+                        <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="sidebar-link @IsActive("ClienteDashboard", "MisFacturas")" title="Mis facturas">
+                            <i class="bi bi-receipt-cutoff"></i><span>Mis facturas</span>
                         </a>
 
-                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link d-flex justify-content-between align-items-center">
+                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link @IsActive("Mensajes")" title="Mensajes">
+                            <i class="bi bi-chat-dots"></i>
                             <span>Mensajes</span>
-
-                            <span id="chatSidebarBadge"
-                                  class="badge bg-danger d-none">
-                                0
-                            </span>
+                            <span id="chatSidebarBadge" class="nav-badge d-none">0</span>
                         </a>
                     }
 
                     @if (User.IsInRole("Entrenador"))
                     {
-                        <a asp-controller="EntrenadorDashboard" asp-action="Index" class="sidebar-link">
-                            Mi panel
+                        <a asp-controller="EntrenadorDashboard" asp-action="Index" class="sidebar-link @IsActive("EntrenadorDashboard")" title="Mi panel">
+                            <i class="bi bi-clipboard2-pulse"></i><span>Mi panel</span>
                         </a>
 
-                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link">
-                            Mis clases
+                        <a asp-controller="Clases" asp-action="Index" class="sidebar-link @IsActive("Clases")" title="Mis clases">
+                            <i class="bi bi-calendar2-week"></i><span>Mis clases</span>
                         </a>
 
-                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link">
-                            Reservas
+                        <a asp-controller="Reservas" asp-action="Index" class="sidebar-link @IsActive("Reservas")" title="Reservas">
+                            <i class="bi bi-person-lines-fill"></i><span>Reservas</span>
                         </a>
 
-                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link d-flex justify-content-between align-items-center">
+                        <a asp-controller="Mensajes" asp-action="Index" class="sidebar-link @IsActive("Mensajes")" title="Mensajes">
+                            <i class="bi bi-chat-dots"></i>
                             <span>Mensajes</span>
-
-                            <span id="chatSidebarBadge"
-                                  class="badge bg-danger d-none">
-                                0
-                            </span>
+                            <span id="chatSidebarBadge" class="nav-badge d-none">0</span>
                         </a>
                     }
-                    
                 </nav>
 
                 <div class="sidebar-footer">
-                    <small>FitControl Web</small>
-                    <span>© 2026</span>
+                    <div class="sidebar-footer-chip">
+                        <i class="bi bi-shield-check"></i>
+                        <span>FitControl Web</span>
+                    </div>
+                    <small>Proyecto DAW 2026</small>
                 </div>
             </aside>
 
             <div class="main-area">
                 <header class="topbar">
-                    <div>
-                        <h5 class="mb-0">@ViewData["Title"]</h5>
-                        <small class="text-muted">Panel de gestión del gimnasio</small>
+                    <div class="topbar-left">
+                        <button class="topbar-icon-btn d-lg-none"
+                                type="button"
+                                id="openMobileSidebar"
+                                aria-label="Abrir menu">
+                            <i class="bi bi-list"></i>
+                        </button>
+
+                        <button class="topbar-icon-btn d-none d-lg-inline-flex"
+                                type="button"
+                                id="toggleSidebar"
+                                aria-label="Contraer menu">
+                            <i class="bi bi-layout-sidebar-inset"></i>
+                        </button>
+
+                        <div>
+                            <h5 class="mb-0">@ViewData["Title"]</h5>
+                            <small class="text-muted">Panel de gestion del gimnasio</small>
+                        </div>
                     </div>
 
-                    <div class="user-box">
+                    <div class="topbar-actions">
+                        @if (User.IsInRole("Cliente"))
+                        {
+                            <a asp-controller="ClienteDashboard" asp-action="ContratarSuscripcion" class="quick-pill">
+                                <i class="bi bi-stars"></i><span>Plan</span>
+                            </a>
+                        }
 
-                        <div class="user-avatar">
-                            @if (!string.IsNullOrWhiteSpace(fotoUsuarioUrl))
-                            {
-                                <img src="@fotoUsuarioUrl"
-                                     alt="Foto de perfil"
-                                     class="user-avatar-img" />
-                            }
-                            else
-                            {
-                                @inicialUsuario
-                            }
+                        <button type="button"
+                                class="quick-pill quick-theme"
+                                id="themeToggle"
+                                aria-label="Cambiar tema">
+                            <i class="bi bi-moon-stars"></i><span>Tema</span>
+                        </button>
+
+                        <div class="user-box">
+                            <div class="user-avatar">
+                                @if (!string.IsNullOrWhiteSpace(fotoUsuarioUrl))
+                                {
+                                    <img src="@fotoUsuarioUrl"
+                                         alt="Foto de perfil"
+                                         class="user-avatar-img" />
+                                }
+                                else
+                                {
+                                    @inicialUsuario
+                                }
+                            </div>
+
+                            <div class="user-info">
+                                <span>@nombreCompleto</span>
+                                <small>@rolUsuario</small>
+                            </div>
+
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-logout" type="submit" title="Salir">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Salir</span>
+                                </button>
+                            </form>
                         </div>
-
-
-                        <div class="user-info">
-                            <span>@User.FindFirst("NombreCompleto")?.Value</span>
-                            <small>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</small>
-                        </div>
-
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            @Html.AntiForgeryToken()
-                            <button class="btn btn-logout" type="submit">
-                                Salir
-                            </button>
-                        </form>
                     </div>
                 </header>
 
                 <main class="content-area">
-                    @* @if (TempData["Success"] != null)
-                    {
-                        <div class="container mt-3">
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="bi bi-check-circle me-2"></i>
-                                @TempData["Success"]
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        </div>
-                    }
-
-                    @if (TempData["Error"] != null)
-                    {
-                        <div class="container mt-3">
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <i class="bi bi-exclamation-triangle me-2"></i>
-                                @TempData["Error"]
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        </div>
-                    } *@
                     <partial name="_Alerts" />
                     @RenderBody()
                 </main>
@@ -230,7 +279,7 @@
     }
 
     @if (User.Identity?.IsAuthenticated == true &&
-                            (User.IsInRole("Cliente") || User.IsInRole("Entrenador")))
+        (User.IsInRole("Cliente") || User.IsInRole("Entrenador")))
     {
         <button class="btn btn-orange chat-float-btn position-relative"
                 type="button"
@@ -253,7 +302,7 @@
 
             <div class="offcanvas-header border-bottom">
                 <h5 class="offcanvas-title" id="chatOffcanvasLabel">
-                    FitControl Chat
+                    <i class="bi bi-chat-heart me-2"></i>FitControl Chat
                 </h5>
 
                 <button type="button"
@@ -269,7 +318,7 @@
             </div>
         </div>
     }
-    
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
@@ -279,136 +328,134 @@
 
     <script>
         async function cargarChatPanel() {
-        const container = document.getElementById('chatContainer');
+            const container = document.getElementById('chatContainer');
 
-        if (!container) return;
+            if (!container) return;
 
-        container.innerHTML = '<div class="text-muted">Cargando conversaciones...</div>';
+            container.innerHTML = '<div class="text-muted">Cargando conversaciones...</div>';
 
-        const response = await fetch('/Mensajes/ChatPanel');
+            const response = await fetch('/Mensajes/ChatPanel');
 
-        if (!response.ok) {
-        container.innerHTML = '<div class="alert alert-danger">Error al cargar el chat.</div>';
-        return;
-        }
+            if (!response.ok) {
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar el chat.</div>';
+                return;
+            }
 
-        container.innerHTML = await response.text();
-        inicializarChatEventos();
+            container.innerHTML = await response.text();
+            inicializarChatEventos();
         }
 
         async function cargarConversacion(usuarioId) {
-        const container = document.getElementById('chatContainer');
+            const container = document.getElementById('chatContainer');
 
-        container.innerHTML = '<div class="text-muted">Cargando conversación...</div>';
+            container.innerHTML = '<div class="text-muted">Cargando conversacion...</div>';
 
-        const response = await fetch(`/Mensajes/ChatConversacion?usuarioId=${usuarioId}`);
+            const response = await fetch(`/Mensajes/ChatConversacion?usuarioId=${usuarioId}`);
 
-        if (!response.ok) {
-        container.innerHTML = '<div class="alert alert-danger">No se pudo cargar la conversación.</div>';
-        return;
-        }
+            if (!response.ok) {
+                container.innerHTML = '<div class="alert alert-danger">No se pudo cargar la conversacion.</div>';
+                return;
+            }
 
-        container.innerHTML = await response.text();
+            container.innerHTML = await response.text();
 
-        const chatBox = document.getElementById('chatBoxPopup');
-        if (chatBox) {
-        chatBox.scrollTop = chatBox.scrollHeight;
-        }
+            const chatBox = document.getElementById('chatBoxPopup');
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
 
-        inicializarChatEventos();
+            inicializarChatEventos();
         }
 
         function inicializarChatEventos() {
-        document.querySelectorAll('.chat-conversation-item').forEach(button => {
-        button.addEventListener('click', function () {
-        const userId = this.dataset.userId;
-        cargarConversacion(userId);
-        });
-        });
+            document.querySelectorAll('.chat-conversation-item').forEach(button => {
+                button.addEventListener('click', function () {
+                    const userId = this.dataset.userId;
+                    cargarConversacion(userId);
+                });
+            });
 
-        const btnVolver = document.getElementById('btnVolverChat');
-        if (btnVolver) {
-        btnVolver.addEventListener('click', function () {
-        cargarChatPanel();
-        });
-        }
+            const btnVolver = document.getElementById('btnVolverChat');
+            if (btnVolver) {
+                btnVolver.addEventListener('click', function () {
+                    cargarChatPanel();
+                });
+            }
 
-        const form = document.getElementById('chatEnviarForm');
-        if (form) {
-        form.addEventListener('submit', async function (e) {
-        e.preventDefault();
+            const form = document.getElementById('chatEnviarForm');
+            if (form) {
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
 
-        const formData = new FormData(form);
+                    const formData = new FormData(form);
 
-        const response = await fetch('/Mensajes/EnviarAjax', {
-        method: 'POST',
-        body: formData
-        });
+                    const response = await fetch('/Mensajes/EnviarAjax', {
+                        method: 'POST',
+                        body: formData
+                    });
 
-        if (!response.ok) {
-        Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se pudo enviar el mensaje.'
-        });
+                    if (!response.ok) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo enviar el mensaje.'
+                        });
 
-        return;
-        }
+                        return;
+                    }
 
-        const data = await response.json();
-        if (data.success) {
-        cargarConversacion(data.usuarioId);
-        actualizarContadorMensajes();
-        }
-        });
-        }
+                    const data = await response.json();
+                    if (data.success) {
+                        cargarConversacion(data.usuarioId);
+                        actualizarContadorMensajes();
+                    }
+                });
+            }
         }
 
         const chatOffcanvas = document.getElementById('chatOffcanvas');
 
         if (chatOffcanvas) {
-        chatOffcanvas.addEventListener('shown.bs.offcanvas', async function () {
-        await cargarChatPanel();
-        actualizarContadorMensajes();
-        });
+            chatOffcanvas.addEventListener('shown.bs.offcanvas', async function () {
+                await cargarChatPanel();
+                actualizarContadorMensajes();
+            });
         }
-    
+
         async function actualizarContadorMensajes() {
-        const badgeFloat = document.getElementById('chatUnreadBadge');
-        const badgeSidebar = document.getElementById('chatSidebarBadge');
+            const badgeFloat = document.getElementById('chatUnreadBadge');
+            const badgeSidebar = document.getElementById('chatSidebarBadge');
 
-        if (!badgeFloat && !badgeSidebar) return;
+            if (!badgeFloat && !badgeSidebar) return;
 
-        try {
-        const response = await fetch('/Mensajes/NoLeidos');
+            try {
+                const response = await fetch('/Mensajes/NoLeidos');
 
-        if (!response.ok) return;
+                if (!response.ok) return;
 
-        const data = await response.json();
-        const total = data.total ?? 0;
+                const data = await response.json();
+                const total = data.total ?? 0;
 
-        [badgeFloat, badgeSidebar].forEach(badge => {
-        if (!badge) return;
+                [badgeFloat, badgeSidebar].forEach(badge => {
+                    if (!badge) return;
 
-        if (total > 0) {
-        badge.textContent = total > 99 ? '99+' : total;
-        badge.classList.remove('d-none');
-        } else {
-        badge.textContent = '0';
-        badge.classList.add('d-none');
-        }
-        });
-        } catch {
-        // Silencioso para no molestar al usuario
-        }
+                    if (total > 0) {
+                        badge.textContent = total > 99 ? '99+' : total;
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.textContent = '0';
+                        badge.classList.add('d-none');
+                    }
+                });
+            } catch {
+                // Evita interrumpir la navegacion si el contador no responde.
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-        actualizarContadorMensajes();
-
-        setInterval(actualizarContadorMensajes, 15000);
+            actualizarContadorMensajes();
+            setInterval(actualizarContadorMensajes, 15000);
         });
     </script>
-
 </body>
 </html>

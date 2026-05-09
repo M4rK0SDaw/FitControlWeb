@@ -105,8 +105,7 @@
                 </select>
             </div> *@
 
-            @*             <div class="col-md-3">*@
-            <div class="col-md-3 d-flex gap-2">
+            <div class="col-md-3">
                 <label class="form-label">Especialidad</label>
                 <select name="especialidadId" class="form-select">
                     <option value="">Todas</option>
@@ -119,35 +118,14 @@
                     }
                 </select>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
-                    <option value="todas" selected="@(ViewBag.Estado == "todas")">
-                        Todas
-                    </option>
-
-                    <option value="disponibles" selected="@(ViewBag.Estado == "disponibles")">
-                        Disponibles
-                    </option>
-
-                    <option value="futuras" selected="@(ViewBag.Estado == "futuras")">
-                        Futuras
-                    </option>
-
-                    <option value="finalizadas" selected="@(ViewBag.Estado == "finalizadas")">
-                        Finalizadas
-                    </option>
-
-                    <option value="completas" selected="@(ViewBag.Estado == "completas")">
-                        Completas
-                    </option>
-
-                    @if (User.IsInRole("Cliente"))
-                    {
-                        <option value="reservadas" selected="@(ViewBag.Estado == "reservadas")">
-                            Mis reservadas
-                        </option>
-                    }
+                    <option value="" selected="@(string.IsNullOrWhiteSpace(ViewBag.Estado?.ToString()))">Todas</option>
+                    <option value="Disponibles" selected="@(ViewBag.Estado?.ToString() == "Disponibles")">Disponibles</option>
+                    <option value="Completas" selected="@(ViewBag.Estado?.ToString() == "Completas")">Completas</option>
+                    <option value="Finalizadas" selected="@(ViewBag.Estado?.ToString() == "Finalizadas")">Finalizadas</option>
                 </select>
             </div>
 
@@ -245,9 +223,10 @@
                                     @if (User.IsInRole("Administrador"))
                                     {
                                         <a asp-action="Edit"
-                                               asp-route-id="@c.Id"
-                                               class="btn btn-sm btn-outline-primary"
-                                               title="Editar">
+                                           asp-route-id="@c.Id"
+                                           asp-route-returnUrl="@($"{Context.Request.Path}{Context.Request.QueryString}")"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
 
@@ -378,7 +357,7 @@
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
                                asp-route-especialidadId="@ViewBag.EspecialidadId"
-                               asp-route-estado="@ViewBag.Estado">                            
+                               asp-route-estado="@ViewBag.Estado">
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
@@ -391,7 +370,7 @@
                                asp-route-search="@ViewBag.Search"
                                asp-route-entrenadorId="@ViewBag.EntrenadorId"
                                asp-route-especialidadId="@ViewBag.EspecialidadId"
-                               asp-route-estado="@ViewBag.Estado">                            
+                               asp-route-estado="@ViewBag.Estado">
                             <i class="bi bi-chevron-double-right"></i>
                         </a>
                     </li>

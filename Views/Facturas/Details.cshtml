@@ -1,4 +1,4 @@
-﻿@model FitControlWeb.Models.Entities.Factura
+@model FitControlWeb.Models.Entities.Factura
 
 @{
     ViewData["Title"] = "Detalle de factura";
@@ -13,14 +13,14 @@
     <div class="page-header flex-wrap gap-3">
         <div>
             <h2 class="page-title">Factura @Model.NumeroFactura</h2>
-            <p class="text-muted mb-0">Detalle de factura y pago simulado</p>
+            <p class="text-muted mb-0">Detalle de factura, pagos registrados y acceso al PDF.</p>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
             <a asp-action="Index" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Volver
             </a>
-           
+
             @if (Model.Pagada != true)
             {
                 <form asp-action="PagarConStripe"
@@ -36,9 +36,15 @@
             }
             else
             {
+                <button type="button"
+                        class="btn btn-outline-primary btn-ver-factura"
+                        data-url="@Url.Action("VerPdf", "Facturas", new { id = Model.Id })">
+                    <i class="bi bi-eye"></i> Ver PDF
+                </button>
+
                 <a asp-action="DescargarPdf"
-                       asp-route-id="@Model.Id"
-                       class="btn btn-outline-danger">
+                   asp-route-id="@Model.Id"
+                   class="btn btn-outline-danger">
                     <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
                 </a>
             }
@@ -46,7 +52,7 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Cliente</span>
                 <p class="info-value mb-0">
@@ -55,21 +61,21 @@
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
-                <span class="info-label">Fecha emisión</span>
+                <span class="info-label">Fecha emision</span>
                 <p class="info-value mb-0">@Model.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</p>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Total</span>
-                <p class="info-value mb-0">@Model.Total.ToString("0.00") €</p>
+                <p class="info-value mb-0">@Model.Total.ToString("0.00") EUR</p>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Estado</span>
                 <br />
@@ -86,37 +92,65 @@
     </div>
 
     <div class="info-box mb-4">
-        <h5 class="fw-bold mb-3">Líneas de factura</h5>
+        <h5 class="fw-bold mb-3">Lineas de factura</h5>
 
-        <div class="table-responsive">
-            <table class="table table-hover table-modern align-middle">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Concepto</th>
-                        <th>Cantidad</th>
-                        <th>Precio unitario</th>
-                        <th>Total línea</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @foreach (var d in Model.FacturaDetalles)
-                    {
+        <div class="d-none d-md-block">
+            <div class="table-responsive">
+                <table class="table table-hover table-modern align-middle">
+                    <thead class="table-dark">
                         <tr>
-                            <td>@d.Concepto</td>
-                            <td>@d.Cantidad</td>
-                            <td>@d.PrecioUnitario.ToString("0.00") €</td>
-                            <td>@d.TotalLinea €</td>
+                            <th>Concepto</th>
+                            <th>Cantidad</th>
+                            <th>Precio unitario</th>
+                            <th>Total linea</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var d in Model.FacturaDetalles)
+                        {
+                            <tr>
+                                <td>@d.Concepto</td>
+                                <td>@d.Cantidad</td>
+                                <td>@d.PrecioUnitario.ToString("0.00") EUR</td>
+                                <td>@((d.TotalLinea ?? 0m).ToString("0.00")) EUR</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-md-none mobile-list">
+            @foreach (var d in Model.FacturaDetalles)
+            {
+                <div class="mobile-item">
+                    <div class="mobile-item-grid">
+                        <div>
+                            <span class="mobile-item-label">Concepto</span>
+                            <p class="mobile-item-value">@d.Concepto</p>
+                        </div>
+                        <div>
+                            <span class="mobile-item-label">Cantidad</span>
+                            <p class="mobile-item-value">@d.Cantidad</p>
+                        </div>
+                        <div>
+                            <span class="mobile-item-label">Precio unitario</span>
+                            <p class="mobile-item-value">@d.PrecioUnitario.ToString("0.00") EUR</p>
+                        </div>
+                        <div>
+                            <span class="mobile-item-label">Total linea</span>
+                            <p class="mobile-item-value">@((d.TotalLinea ?? 0m).ToString("0.00")) EUR</p>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
 
         <div class="text-end mt-3">
-            <p class="mb-1">Subtotal: <strong>@Model.Subtotal.ToString("0.00") €</strong></p>
-            <p class="mb-1">Impuestos: <strong>@Model.Impuestos.ToString("0.00") €</strong></p>
-            <h5>Total: <strong>@Model.Total.ToString("0.00") €</strong></h5>
+            <p class="mb-1">Subtotal: <strong>@Model.Subtotal.ToString("0.00") EUR</strong></p>
+            <p class="mb-1">Impuestos: <strong>@Model.Impuestos.ToString("0.00") EUR</strong></p>
+            <h5>Total: <strong>@Model.Total.ToString("0.00") EUR</strong></h5>
         </div>
     </div>
 
@@ -126,48 +160,96 @@
         @if (Model.Pagos == null || !Model.Pagos.Any())
         {
             <div class="alert alert-info mb-0">
-                Esta factura todavía no tiene pagos registrados.
+                Esta factura todavia no tiene pagos registrados.
             </div>
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-hover table-modern align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Método</th>
-                            <th>Monto</th>
-                            <th>Fecha pago</th>
-                            <th>Referencia</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @foreach (var p in Model.Pagos.Where(p => p.Activo == true))
-                        {
+            <div class="d-none d-md-block">
+                <div class="table-responsive">
+                    <table class="table table-hover table-modern align-middle">
+                        <thead class="table-dark">
                             <tr>
-                                <td>@(p.MetodoPago?.Nombre ?? "Sin método")</td>
-                                <td>@p.Monto.ToString("0.00") €</td>
-                                <td>@p.FechaPago?.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@p.ReferenciaExterna</td>
+                                <th>Metodo</th>
+                                <th>Monto</th>
+                                <th>Fecha pago</th>
+                                <th>Referencia</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var p in Model.Pagos.Where(p => p.Activo == true))
+                            {
+                                <tr>
+                                    <td>@(p.MetodoPago?.Nombre ?? "Sin metodo")</td>
+                                    <td>@p.Monto.ToString("0.00") EUR</td>
+                                    <td>@p.FechaPago?.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@p.ReferenciaExterna</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-md-none mobile-list">
+                @foreach (var p in Model.Pagos.Where(p => p.Activo == true))
+                {
+                    <div class="mobile-item">
+                        <div class="mobile-item-grid">
+                            <div>
+                                <span class="mobile-item-label">Metodo</span>
+                                <p class="mobile-item-value">@(p.MetodoPago?.Nombre ?? "Sin metodo")</p>
+                            </div>
+                            <div>
+                                <span class="mobile-item-label">Monto</span>
+                                <p class="mobile-item-value">@p.Monto.ToString("0.00") EUR</p>
+                            </div>
+                            <div>
+                                <span class="mobile-item-label">Fecha pago</span>
+                                <p class="mobile-item-value">@p.FechaPago?.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                            <div>
+                                <span class="mobile-item-label">Referencia</span>
+                                <p class="mobile-item-value">@p.ReferenciaExterna</p>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         }
     </div>
 </div>
 
+<div class="modal fade" id="facturaPdfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-centered">
+        <div class="modal-content" style="height: 90vh;">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-pdf"></i> Vista previa de factura
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-0">
+                <iframe id="facturaPdfFrame"
+                        src=""
+                        style="width: 100%; height: 100%; border: 0;">
+                </iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
-    <script>   
+    <script>
         document.querySelectorAll('.btn-stripe').forEach(button => {
             button.addEventListener('click', function () {
                 const form = this.closest('form');
 
                 Swal.fire({
                     title: 'Pagar con Stripe',
-                    text: 'Serás redirigido a la página segura de Stripe en modo test.',
+                    text: 'Seras redirigido a la pagina segura de Stripe en modo test.',
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',
@@ -182,5 +264,19 @@
             });
         });
 
+        document.querySelectorAll('.btn-ver-factura').forEach(button => {
+            button.addEventListener('click', function () {
+                const url = this.dataset.url;
+
+                document.getElementById('facturaPdfFrame').src = url;
+
+                const modal = new bootstrap.Modal(document.getElementById('facturaPdfModal'));
+                modal.show();
+            });
+        });
+
+        document.getElementById('facturaPdfModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('facturaPdfFrame').src = '';
+        });
     </script>
 }

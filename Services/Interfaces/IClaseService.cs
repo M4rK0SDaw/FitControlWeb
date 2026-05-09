@@ -1,6 +1,7 @@
 ﻿
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
+using FitControlWeb.ViewModels;
 
 namespace FitControlWeb.Services.Interfaces;
 
@@ -20,19 +21,10 @@ public interface IClaseService
         TimeOnly horaFin,
         int? claseIdExcluir = null);
 
-    Task<List<Clase>> GetFiltradasAsync(
-     string search,
-     int? entrenadorId,
-     int? especialidadId,
-     string? estado,
-     int? clienteId,
-     int page,
-     int pageSize);
-
-    Task<int> CountFiltradasAsync(
-        string search,
-        int? entrenadorId,
-        int? especialidadId,
-        string? estado,
-        int? clienteId);
+    Task<List<Clase>> GetFiltradasAsync(string search, int? entrenadorId, int? especialidadId, string? estado, int page, int pageSize);
+    Task<int> CountFiltradasAsync(string search, int? entrenadorId, int? especialidadId, string? estado);
+    Task<List<ClaseListViewModel>> GetListViewAsync(string search, int? entrenadorId, int? especialidadId, string? estado, int page, int pageSize, int? usuarioClienteId);
+    Task<List<Usuario>> GetEntrenadoresActivosAsync();
+    Task<List<Especialidad>> GetEspecialidadesActivasAsync();
+    Task<bool> PuedeVerClaseAsync(int claseId, int? entrenadorId);
 }

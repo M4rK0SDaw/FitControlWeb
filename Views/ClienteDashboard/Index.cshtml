@@ -1,4 +1,4 @@
-﻿@model FitControlWeb.ViewModels.Dashboard.ClienteDashboardViewModel
+@model FitControlWeb.ViewModels.Dashboard.ClienteDashboardViewModel
 
 @{
     ViewData["Title"] = "Mi panel";
@@ -9,6 +9,40 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+
+    <style>
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .class-card {
+            border: 1px solid #eceff3;
+            border-radius: 16px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .reservation-list,
+        .invoice-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .compact-row {
+            border: 1px solid #eceff3;
+            border-radius: 14px;
+            padding: 14px;
+            background: #fff;
+        }
+
+        @@media (max-width: 768px) {
+            .quick-actions .btn {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
 }
 
 <div class="page-card">
@@ -21,14 +55,7 @@
             </p>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap">
-           @*  <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">
-                <i class="bi bi-calendar-plus"></i> Reservar clase
-            </a> *@
-
-            @* <a asp-controller="Reservas" asp-action="MisReservas" class="btn btn-outline-primary">
-                <i class="bi bi-calendar-check"></i> Mis reservas
-            </a> *@
+        <div class="quick-actions">
             <a asp-controller="ClienteDashboard" asp-action="Perfil" class="btn btn-outline-dark">
                 <i class="bi bi-person-circle"></i> Mi perfil
             </a>
@@ -37,16 +64,20 @@
                 <i class="bi bi-chat-dots"></i> Mensajes
             </a>
 
-            @* <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="btn btn-outline-success">
+            <a asp-controller="Reservas" asp-action="MisReservas" class="btn btn-outline-primary">
+                <i class="bi bi-calendar-check"></i> Mis reservas
+            </a>
+
+            <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="btn btn-outline-success">
                 <i class="bi bi-receipt"></i> Mis facturas
-            </a> *@
+            </a>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
-                <span class="info-label">Suscripción</span>
+                <span class="info-label">Suscripcion</span>
                 @if (tieneSuscripcion)
                 {
                     <p class="info-value mb-0 text-success">Activa</p>
@@ -58,39 +89,49 @@
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Reservas activas</span>
                 <p class="info-value mb-0">@Model.TotalReservasActivas</p>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Facturas pendientes</span>
                 <p class="info-value mb-0">@Model.TotalFacturasPendientes</p>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-lg-3">
             <div class="info-box">
                 <span class="info-label">Importe pendiente</span>
-                <p class="info-value mb-0">@Model.ImportePendiente.ToString("0.00") €</p>
+                <p class="info-value mb-0">@Model.ImportePendiente.ToString("0.00") EUR</p>
             </div>
         </div>
     </div>
 
     <div class="row g-4">
 
-        <div class="col-lg-4">
+        <div class="col-12 col-lg-4">
             <div class="info-box h-100">
-                <h5 class="fw-bold mb-3">Mi suscripción</h5>
+                <h5 class="fw-bold mb-3">Mi suscripcion</h5>
 
                 @if (suscripcion == null)
                 {
-                    <div class="alert alert-warning mb-0">
-                        No tienes una suscripción activa actualmente.
+                    <div class="alert alert-warning">
+                        No tienes una suscripcion activa actualmente.
                     </div>
+
+                    <p class="text-muted small">
+                        Al contratar un plan iras directamente al pago. La suscripcion y la factura se generan solo cuando Stripe confirma el cobro.
+                    </p>
+
+                    <a asp-controller="ClienteDashboard"
+                       asp-action="ContratarSuscripcion"
+                       class="btn btn-orange">
+                        <i class="bi bi-credit-card me-1"></i> Contratar suscripcion
+                    </a>
                 }
                 else
                 {
@@ -102,12 +143,12 @@
                     <div class="mb-3">
                         <span class="info-label">Precio</span>
                         <p class="info-value">
-                            @(suscripcion.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") €
+                            @(suscripcion.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") EUR
                         </p>
                     </div>
 
                     <div class="mb-3">
-                        <span class="info-label">Válida hasta</span>
+                        <span class="info-label">Valida hasta</span>
                         <p class="info-value">@suscripcion.FechaFin.ToString("dd/MM/yyyy")</p>
                     </div>
 
@@ -116,10 +157,10 @@
             </div>
         </div>
 
-        <div class="col-lg-8">
+        <div class="col-12 col-lg-8">
             <div class="info-box h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">Próximas reservas</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold mb-0">Proximas reservas</h5>
 
                     <a asp-controller="Reservas" asp-action="MisReservas" class="btn btn-sm btn-outline-primary">
                         Ver todas
@@ -129,43 +170,59 @@
                 @if (!Model.ProximasReservas.Any())
                 {
                     <div class="alert alert-info mb-0">
-                        No tienes próximas reservas.
+                        No tienes proximas reservas.
                     </div>
                 }
                 else
                 {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-modern align-middle">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Clase</th>
-                                    <th>Fecha</th>
-                                    <th>Hora</th>
-                                    <th>Entrenador</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var r in Model.ProximasReservas)
-                                {
+                    <div class="d-none d-md-block">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-modern align-middle">
+                                <thead class="table-dark">
                                     <tr>
-                                        <td>@r.Clase?.Nombre</td>
-                                        <td>@r.Clase?.Fecha.ToString("dd/MM/yyyy")</td>
-                                        <td>@r.Clase?.HoraInicio - @r.Clase?.HoraFin</td>
-                                        <td>
-                                            @r.Clase?.Entrenador?.Nombre @r.Clase?.Entrenador?.Apellidos
-                                        </td>
+                                        <th>Clase</th>
+                                        <th>Fecha</th>
+                                        <th>Hora</th>
+                                        <th>Entrenador</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in Model.ProximasReservas)
+                                    {
+                                        <tr>
+                                            <td>@r.Clase?.Nombre</td>
+                                            <td>@r.Clase?.Fecha.ToString("dd/MM/yyyy")</td>
+                                            <td>@r.Clase?.HoraInicio - @r.Clase?.HoraFin</td>
+                                            <td>@r.Clase?.Entrenador?.Nombre @r.Clase?.Entrenador?.Apellidos</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="d-md-none reservation-list">
+                        @foreach (var r in Model.ProximasReservas)
+                        {
+                            <div class="compact-row">
+                                <div class="fw-semibold">@r.Clase?.Nombre</div>
+                                <div class="small text-muted">@r.Clase?.Fecha.ToString("dd/MM/yyyy") · @r.Clase?.HoraInicio - @r.Clase?.HoraFin</div>
+                                <div class="small text-muted">@r.Clase?.Entrenador?.Nombre @r.Clase?.Entrenador?.Apellidos</div>
+                            </div>
+                        }
                     </div>
                 }
             </div>
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-12 col-xl-6">
             <div class="info-box h-100">
-                <h5 class="fw-bold mb-3">Facturas pendientes</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold mb-0">Facturas pendientes</h5>
+                    <a asp-controller="ClienteDashboard" asp-action="MisFacturas" class="btn btn-sm btn-outline-success">
+                        Ver todas
+                    </a>
+                </div>
 
                 @if (!Model.FacturasPendientes.Any())
                 {
@@ -175,42 +232,40 @@
                 }
                 else
                 {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-modern align-middle">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Factura</th>
-                                    <th>Total</th>
-                                    <th class="text-end">Acción</th>
-                                </tr>
-                            </thead>
+                    <div class="invoice-list">
+                        @foreach (var f in Model.FacturasPendientes)
+                        {
+                            <div class="compact-row">
+                                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                    <div>
+                                        <div class="fw-semibold">@f.NumeroFactura</div>
+                                        <div class="small text-muted">@f.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</div>
+                                    </div>
 
-                            <tbody>
-                                @foreach (var f in Model.FacturasPendientes)
-                                {
-                                    <tr>
-                                        <td>@f.NumeroFactura</td>
-                                        <td>@f.Total.ToString("0.00") €</td>
-                                        <td class="text-end">
-                                            <a asp-controller="Facturas"
-                                                   asp-action="Details"
-                                                   asp-route-id="@f.Id"
-                                                   class="btn btn-sm btn-outline-dark">
-                                                <i class="bi bi-eye"></i> Ver
-                                            </a>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                    <div class="text-md-end">
+                                        <div class="fw-bold">@f.Total.ToString("0.00") EUR</div>
+                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-actions mt-3">
+                                    <a asp-controller="Facturas"
+                                       asp-action="Details"
+                                       asp-route-id="@f.Id"
+                                       class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-12 col-xl-6">
             <div class="info-box h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                     <h5 class="fw-bold mb-0">Clases disponibles</h5>
 
                     <a asp-controller="Clases" asp-action="Index" class="btn btn-sm btn-orange">
@@ -232,8 +287,8 @@
                         var capacidad = c.CapacidadMaxima ?? 0;
                         var completa = capacidad > 0 && ocupadas >= capacidad;
 
-                        <div class="border rounded p-3 mb-2">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="class-card mb-2">
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                                 <div>
                                     <strong>@c.Nombre</strong>
                                     <div class="small text-muted">
@@ -241,6 +296,9 @@
                                     </div>
                                     <div class="small text-muted">
                                         @c.Especialidad?.Nombre · @c.Entrenador?.Nombre @c.Entrenador?.Apellidos
+                                    </div>
+                                    <div class="small text-muted">
+                                        Ocupacion: @ocupadas/@capacidad
                                     </div>
                                 </div>
 

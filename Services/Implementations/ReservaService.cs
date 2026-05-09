@@ -83,6 +83,13 @@ public class ReservaService : IReservaService
         if (reservaExistente != null && reservaExistente.Activo == true)
             return ServiceResult.Fail("Ya tienes una reserva activa en esta clase.", "RESERVA");
 
+        if (await ClienteTieneSolapeAsync(usuarioId, clase))
+        {
+            return ServiceResult.Fail(
+                "Ya tienes una reserva activa en otra clase que coincide con este horario.",
+                "SOLAPE");
+        }
+
         if (!await HayPlazasAsync(claseId))
             return ServiceResult.Fail("No hay plazas disponibles.", "PLAZAS");
 
@@ -118,44 +125,6 @@ public class ReservaService : IReservaService
 
         return ServiceResult.Ok("Reserva realizada correctamente.");
     }
-    //public async Task<ServiceResult> CrearAsync(int usuarioId, int claseId)
-    //{
-    //    var clase = await _context.Clases
-    //        .FirstOrDefaultAsync(c => c.Id == claseId && c.Activo == true);
-
-    //    if (clase == null)
-    //        return ServiceResult.Fail("La clase no existe o no está activa.", "CLASE");
-
-    //    if (clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
-    //        return ServiceResult.Fail("No puedes reservar una clase pasada.", "CLASE");
-
-    //    if (await YaReservadaAsync(usuarioId, claseId))
-    //        return ServiceResult.Fail("Ya tienes una reserva activa en esta clase.", "RESERVA");
-
-    //    if (!await HayPlazasAsync(claseId))
-    //        return ServiceResult.Fail("No hay plazas disponibles.", "PLAZAS");
-
-    //    var estadoActiva = await _context.EstadoReservas
-    //        .FirstOrDefaultAsync(e => e.Nombre == "Activa");
-
-    //    if (estadoActiva == null)
-    //        return ServiceResult.Fail("No existe el estado 'Activa' en la base de datos.", "ESTADO");
-
-    //    var reserva = new Reserva
-    //    {
-    //        UsuarioId = usuarioId,
-    //        ClaseId = claseId,
-    //        EstadoReservaId = estadoActiva.Id,
-    //        FechaReserva = DateTime.Now,
-    //        Activo = true
-    //    };
-
-    //    _context.Reservas.Add(reserva);
-    //    await _context.SaveChangesAsync();
-
-    //    return ServiceResult.Ok("Reserva realizada correctamente.");
-    //}
-
     public async Task<ServiceResult> CancelarAsync(int reservaId)
     {
         var reserva = await _context.Reservas
@@ -207,6 +176,13 @@ public class ReservaService : IReservaService
 
         if (capacidadMaxima <= 0 || reservasActivas >= capacidadMaxima)
             return ServiceResult.Fail("No hay plazas disponibles para reactivar esta reserva.", "PLAZAS");
+
+        if (await ClienteTieneSolapeAsync(reserva.UsuarioId, reserva.Clase, reserva.Id))
+        {
+            return ServiceResult.Fail(
+                "No puedes reactivar esta reserva porque coincide con otra clase reservada.",
+                "SOLAPE");
+        }
 
         var estadoActiva = await _context.EstadoReservas
             .FirstOrDefaultAsync(e => e.Nombre == "Activa");
@@ -370,5 +346,87 @@ public class ReservaService : IReservaService
     public async Task<int> CountFiltradasAsync(string? search, string? estado)
     {
         return await QueryReservas(search, estado).CountAsync();
+    }
+
+    public async Task<List<Reserva>> GetFiltradasAsync(
+        string? search,
+        string? estado,
+        int? entrenadorId,
+        int page,
+        int pageSize)
+    {
+        return await QueryReservas(search, estado, entrenadorId)
+            .OrderByDescending(r => r.FechaReserva)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountFiltradasAsync(string? search, string? estado, int? entrenadorId)
+    {
+        return await QueryReservas(search, estado, entrenadorId).CountAsync();
+    }
+
+    public async Task<int> CountCanceladasAsync(int? entrenadorId)
+    {
+        var query = _context.Reservas
+            .Where(r => r.Activo == false)
+            .AsQueryable();
+
+        if (entrenadorId.HasValue)
+            query = query.Where(r => r.Clase.EntrenadorId == entrenadorId.Value);
+
+        return await query.CountAsync();
+    }
+
+    public async Task<Clase?> GetClaseConReservasAsync(int claseId)
+    {
+        return await _context.Clases
+            .Include(c => c.Reservas)
+            .FirstOrDefaultAsync(c => c.Id == claseId);
+    }
+
+    public async Task<bool> PuedeGestionarClaseAsync(int claseId, int? entrenadorId)
+    {
+        if (!entrenadorId.HasValue)
+            return true;
+
+        return await _context.Clases.AnyAsync(c =>
+            c.Id == claseId &&
+            c.EntrenadorId == entrenadorId.Value);
+    }
+
+    public async Task<bool> PuedeGestionarReservaAsync(int reservaId, int? entrenadorId)
+    {
+        if (!entrenadorId.HasValue)
+            return true;
+
+        return await _context.Reservas.AnyAsync(r =>
+            r.Id == reservaId &&
+            r.Clase.EntrenadorId == entrenadorId.Value);
+    }
+
+    private IQueryable<Reserva> QueryReservas(string? search, string? estado, int? entrenadorId)
+    {
+        var query = QueryReservas(search, estado);
+
+        if (entrenadorId.HasValue)
+            query = query.Where(r => r.Clase.EntrenadorId == entrenadorId.Value);
+
+        return query;
+    }
+
+    private async Task<bool> ClienteTieneSolapeAsync(int usuarioId, Clase clase, int? reservaIdExcluir = null)
+    {
+        return await _context.Reservas
+            .Include(r => r.Clase)
+            .AnyAsync(r =>
+                r.UsuarioId == usuarioId &&
+                r.Activo == true &&
+                (!reservaIdExcluir.HasValue || r.Id != reservaIdExcluir.Value) &&
+                r.Clase.Activo == true &&
+                r.Clase.Fecha == clase.Fecha &&
+                clase.HoraInicio < r.Clase.HoraFin &&
+                clase.HoraFin > r.Clase.HoraInicio);
     }
 }

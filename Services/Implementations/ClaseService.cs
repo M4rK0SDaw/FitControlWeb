@@ -2,6 +2,7 @@
 using FitControlWeb.Data;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
+using FitControlWeb.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace FitControlWeb.Services.Implementations;
@@ -90,7 +91,9 @@ public class ClaseService : IClaseService
 
     public async Task<ServiceResult> SoftDeleteAsync(int id)
     {
-        var clase = await _context.Clases.FindAsync(id);
+        var clase = await _context.Clases
+            .Include(c => c.Reservas)
+            .FirstOrDefaultAsync(c => c.Id == id);
 
         if (clase == null)
             return ServiceResult.Fail("La clase no existe.", "CLASE");
@@ -98,12 +101,43 @@ public class ClaseService : IClaseService
         if (clase.Activo != true)
             return ServiceResult.Fail("La clase ya está eliminada.", "CLASE");
 
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+        var claseFinalizada = clase.Fecha < hoy || (clase.Fecha == hoy && clase.HoraFin <= horaActual);
+
+        var estadoCanceladaId = await _context.EstadoReservas
+            .Where(e => e.Nombre == "Cancelada")
+            .Select(e => (int?)e.Id)
+            .FirstOrDefaultAsync();
+
+        var estadoFinalizadaId = await _context.EstadoReservas
+            .Where(e => e.Nombre == "Finalizada")
+            .Select(e => (int?)e.Id)
+            .FirstOrDefaultAsync();
+
+        var reservasActualizadas = 0;
+
+        foreach (var reserva in clase.Reservas.Where(r => r.Activo == true))
+        {
+            reserva.EstadoReservaId = claseFinalizada
+                ? (estadoFinalizadaId ?? reserva.EstadoReservaId)
+                : (estadoCanceladaId ?? reserva.EstadoReservaId);
+
+            reserva.Activo = false;
+            reserva.FechaBaja = ahora;
+            reservasActualizadas++;
+        }
+
         clase.Activo = false;
-        clase.FechaBaja = DateTime.Now;
+        clase.FechaBaja = ahora;
 
         await _context.SaveChangesAsync();
 
-        return ServiceResult.Ok("Clase eliminada correctamente.");
+        return ServiceResult.Ok(
+            reservasActualizadas == 1
+                ? "Clase dada de baja y 1 reserva actualizada correctamente."
+                : $"Clase dada de baja y {reservasActualizadas} reservas actualizadas correctamente.");
     }
 
     public async Task<bool> EntrenadorTieneSolapeAsync(
@@ -124,15 +158,16 @@ public class ClaseService : IClaseService
     }
 
     public async Task<List<Clase>> GetFiltradasAsync(
-       string search,
-       int? entrenadorId,
-       int? especialidadId,
-       string? estado,
-       int? clienteId,
-       int page,
-       int pageSize)
+    string search,
+    int? entrenadorId,
+    int? especialidadId,
+    string? estado,
+    int page,
+    int pageSize)
     {
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
 
         var query = _context.Clases
             .AsNoTracking()
@@ -156,61 +191,7 @@ public class ClaseService : IClaseService
             query = query.Where(c => c.EspecialidadId == especialidadId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(estado))
-        {
-            estado = estado.ToLower();
-
-            switch (estado)
-            {
-                case "disponibles":
-                    query = query.Where(c =>
-                        c.Fecha >= hoy &&
-                        (c.CapacidadMaxima ?? 0) > _context.Reservas.Count(r =>
-                            r.ClaseId == c.Id &&
-                            r.Activo == true));
-
-                    if (clienteId.HasValue)
-                    {
-                        query = query.Where(c =>
-                            !_context.Reservas.Any(r =>
-                                r.ClaseId == c.Id &&
-                                r.UsuarioId == clienteId.Value &&
-                                r.Activo == true));
-                    }
-
-                    break;
-
-                case "finalizadas":
-                    query = query.Where(c => c.Fecha < hoy);
-                    break;
-
-                case "futuras":
-                    query = query.Where(c => c.Fecha >= hoy);
-                    break;
-
-                case "completas":
-                    query = query.Where(c =>
-                        (c.CapacidadMaxima ?? 0) <= _context.Reservas.Count(r =>
-                            r.ClaseId == c.Id &&
-                            r.Activo == true));
-                    break;
-
-                case "reservadas":
-                    if (clienteId.HasValue)
-                    {
-                        query = query.Where(c =>
-                            _context.Reservas.Any(r =>
-                                r.ClaseId == c.Id &&
-                                r.UsuarioId == clienteId.Value &&
-                                r.Activo == true));
-                    }
-                    break;
-
-                case "todas":
-                default:
-                    break;
-            }
-        }
+        query = AplicarFiltroEstado(query, estado, hoy, horaActual);
 
         return await query
             .OrderBy(c => c.Fecha)
@@ -224,10 +205,11 @@ public class ClaseService : IClaseService
         string search,
         int? entrenadorId,
         int? especialidadId,
-        string? estado,
-        int? clienteId)
+        string? estado)
     {
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
 
         var query = _context.Clases
             .AsNoTracking()
@@ -249,63 +231,141 @@ public class ClaseService : IClaseService
             query = query.Where(c => c.EspecialidadId == especialidadId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(estado))
-        {
-            estado = estado.ToLower();
-
-            switch (estado)
-            {
-                case "disponibles":
-                    query = query.Where(c =>
-                        c.Fecha >= hoy &&
-                        (c.CapacidadMaxima ?? 0) > _context.Reservas.Count(r =>
-                            r.ClaseId == c.Id &&
-                            r.Activo == true));
-
-                    if (clienteId.HasValue)
-                    {
-                        query = query.Where(c =>
-                            !_context.Reservas.Any(r =>
-                                r.ClaseId == c.Id &&
-                                r.UsuarioId == clienteId.Value &&
-                                r.Activo == true));
-                    }
-
-                    break;
-
-                case "finalizadas":
-                    query = query.Where(c => c.Fecha < hoy);
-                    break;
-
-                case "futuras":
-                    query = query.Where(c => c.Fecha >= hoy);
-                    break;
-
-                case "completas":
-                    query = query.Where(c =>
-                        (c.CapacidadMaxima ?? 0) <= _context.Reservas.Count(r =>
-                            r.ClaseId == c.Id &&
-                            r.Activo == true));
-                    break;
-
-                case "reservadas":
-                    if (clienteId.HasValue)
-                    {
-                        query = query.Where(c =>
-                            _context.Reservas.Any(r =>
-                                r.ClaseId == c.Id &&
-                                r.UsuarioId == clienteId.Value &&
-                                r.Activo == true));
-                    }
-                    break;
-
-                case "todas":
-                default:
-                    break;
-            }
-        }
+        query = AplicarFiltroEstado(query, estado, hoy, horaActual);
 
         return await query.CountAsync();
+    }
+
+    public async Task<List<ClaseListViewModel>> GetListViewAsync(
+        string search,
+        int? entrenadorId,
+        int? especialidadId,
+        string? estado,
+        int page,
+        int pageSize,
+        int? usuarioClienteId)
+    {
+        var clases = await GetFiltradasAsync(search, entrenadorId, especialidadId, estado, page, pageSize);
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+
+        var clienteTieneSuscripcionActiva = false;
+        var clasesReservadasCliente = new List<int>();
+
+        if (usuarioClienteId.HasValue)
+        {
+            clienteTieneSuscripcionActiva = await _context.Suscripciones.AnyAsync(s =>
+                s.UsuarioId == usuarioClienteId.Value &&
+                s.Activa == true &&
+                s.FechaFin >= DateTime.Today);
+
+            clasesReservadasCliente = await _context.Reservas
+                .Where(r => r.UsuarioId == usuarioClienteId.Value && r.Activo == true)
+                .Select(r => r.ClaseId)
+                .ToListAsync();
+        }
+
+        var claseIds = clases.Select(c => c.Id).ToList();
+
+        var plazasOcupadasPorClase = await _context.Reservas
+            .Where(r => claseIds.Contains(r.ClaseId) && r.Activo == true)
+            .GroupBy(r => r.ClaseId)
+            .Select(g => new { ClaseId = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(x => x.ClaseId, x => x.Total);
+
+        return clases.Select(c =>
+        {
+            var plazasOcupadas = plazasOcupadasPorClase.TryGetValue(c.Id, out var total)
+                ? total
+                : 0;
+
+            var capacidadMaxima = c.CapacidadMaxima ?? 0;
+
+            return new ClaseListViewModel
+            {
+                Id = c.Id,
+                Nombre = c.Nombre,
+                Fecha = c.Fecha,
+                HoraInicio = c.HoraInicio,
+                HoraFin = c.HoraFin,
+                CapacidadMaxima = capacidadMaxima,
+                PlazasOcupadas = plazasOcupadas,
+                Entrenador = $"{c.Entrenador.Nombre} {c.Entrenador.Apellidos}",
+                Especialidad = c.Especialidad.Nombre,
+                Completa = capacidadMaxima > 0 && plazasOcupadas >= capacidadMaxima,
+                YaReservada = clasesReservadasCliente.Contains(c.Id),
+                EsPasada = c.Fecha < hoy || (c.Fecha == hoy && c.HoraFin <= horaActual),
+                ClienteTieneSuscripcionActiva = clienteTieneSuscripcionActiva
+            };
+        }).ToList();
+    }
+
+    public async Task<List<Usuario>> GetEntrenadoresActivosAsync()
+    {
+        return await _context.Usuarios
+            .Include(u => u.Rol)
+            .Where(u => u.Activo == true && u.Rol.Nombre == "Entrenador")
+            .OrderBy(u => u.Nombre)
+            .ThenBy(u => u.Apellidos)
+            .ToListAsync();
+    }
+
+    public async Task<List<Especialidad>> GetEspecialidadesActivasAsync()
+    {
+        return await _context.Especialidades
+            .Where(e => e.Activo == true)
+            .OrderBy(e => e.Nombre)
+            .ToListAsync();
+    }
+
+    public async Task<bool> PuedeVerClaseAsync(int claseId, int? entrenadorId)
+    {
+        if (!entrenadorId.HasValue)
+            return true;
+
+        return await _context.Clases.AnyAsync(c =>
+            c.Id == claseId &&
+            c.EntrenadorId == entrenadorId.Value);
+    }
+
+    private static IQueryable<Clase> AplicarFiltroEstado(
+        IQueryable<Clase> query,
+        string? estado,
+        DateOnly hoy,
+        TimeOnly horaActual)
+    {
+        if (string.IsNullOrWhiteSpace(estado) || estado == "Todas")
+            return query;
+
+        var normalizado = estado.Trim().ToLowerInvariant();
+
+        if (normalizado == "finalizadas")
+        {
+            return query.Where(c =>
+                c.Fecha < hoy ||
+                (c.Fecha == hoy && c.HoraFin <= horaActual));
+        }
+
+        if (normalizado == "completas")
+        {
+            return query.Where(c =>
+                c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual))
+                .Where(c => c.CapacidadMaxima != null && c.CapacidadMaxima > 0)
+                .Where(c => c.Reservas.Count(r => r.Activo == true) >= c.CapacidadMaxima);
+        }
+
+        if (normalizado == "disponibles")
+        {
+            return query.Where(c =>
+                c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual))
+                .Where(c =>
+                    c.CapacidadMaxima == null ||
+                    c.CapacidadMaxima <= 0 ||
+                    c.Reservas.Count(r => r.Activo == true) < c.CapacidadMaxima);
+        }
+
+        return query;
     }
 
 }

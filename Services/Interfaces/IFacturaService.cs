@@ -8,14 +8,14 @@ public interface IFacturaService
     Task<List<Factura>> GetAllAsync();
     Task<List<Factura>> GetByUsuarioAsync(int usuarioId);
     Task<Factura?> GetByIdAsync(int id);
+    Task<bool> PuedeVerFacturaAsync(int facturaId, int usuarioId, bool esAdministrador);
 
     Task<Factura> CreateAsync(Factura factura);
     Task MarcarComoPagadaAsync(int facturaId);
     Task SoftDeleteAsync(int id);
 
     Task<ServiceResult<Factura>> CrearDesdeSuscripcionAsync(int suscripcionId);
-
-    Task<ServiceResult> SimularPagoStripeAsync(int facturaId);
+    
 
     Task<List<Factura>> GetFiltradasAsync(string? search, bool? pagada, int page, int pageSize);
     Task<int> CountFiltradasAsync(string? search, bool? pagada);

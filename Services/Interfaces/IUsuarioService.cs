@@ -24,6 +24,7 @@
 
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
+using FitControlWeb.ViewModels;
 
 namespace FitControlWeb.Services.Interfaces;
 
@@ -42,4 +43,9 @@ public interface IUsuarioService
 
     Task<List<Usuario>> GetFiltradosAsync(string? search, int? rolId, bool? activo, int page, int pageSize);
     Task<int> CountFiltradosAsync(string? search, int? rolId, bool? activo);
+    Task<List<Rol>> GetRolesAsync();
+    Task<(int TotalUsuarios, int UsuariosActivos, int UsuariosInactivos, int TotalClientes, int TotalEntrenadores)> GetKpisAsync();
+    Task<ServiceResult<Usuario>> CreateFromViewModelAsync(UsuarioCreateViewModel model, IFormFile? foto);
+    Task<ServiceResult> UpdateFromViewModelAsync(UsuarioEditViewModel model);
+    Task<ServiceResult> GuardarFotoAsync(int id, IFormFile? foto);
 }

@@ -134,9 +134,8 @@
                     <tr>
                         <th>Nº factura</th>
                         <th>Cliente</th>
+                        <th>Concepto</th>
                         <th>Fecha</th>
-                        <th>Subtotal</th>
-                        <th>Impuestos</th>
                         <th>Total</th>
                         <th>Estado</th>
                         <th class="text-end">Acciones</th>
@@ -157,11 +156,17 @@
                                 <small class="text-muted">@f.Usuario?.Email</small>
                             </td>
 
+                            <td>
+                                @{
+                                    var concepto = f.FacturaDetalles?
+                                        .Where(d => !string.IsNullOrWhiteSpace(d.Concepto))
+                                        .Select(d => d.Concepto)
+                                        .FirstOrDefault();
+                                }
+                                @(string.IsNullOrWhiteSpace(concepto) ? "Sin concepto" : concepto)
+                            </td>
+
                             <td>@f.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</td>
-
-                            <td>@f.Subtotal.ToString("0.00") €</td>
-
-                            <td>@f.Impuestos.ToString("0.00") €</td>
 
                             <td class="fw-bold">@f.Total.ToString("0.00") €</td>
 

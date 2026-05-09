@@ -21,6 +21,7 @@ public class FacturaService : IFacturaService
         var query = _context.Facturas
             .Include(f => f.Usuario)
             .Include(f => f.TipoFactura)
+            .Include(f => f.FacturaDetalles)
             .Where(f => f.Activo == true)
             .AsQueryable();
 
@@ -68,6 +69,17 @@ public class FacturaService : IFacturaService
             .Include(f => f.Pagos)
             .ThenInclude(p => p.MetodoPago)
             .FirstOrDefaultAsync(f => f.Id == id);
+    }
+
+    public async Task<bool> PuedeVerFacturaAsync(int facturaId, int usuarioId, bool esAdministrador)
+    {
+        if (esAdministrador)
+            return true;
+
+        return await _context.Facturas.AnyAsync(f =>
+            f.Id == facturaId &&
+            f.UsuarioId == usuarioId &&
+            f.Activo == true);
     }
 
     public async Task<Factura> CreateAsync(Factura factura)
@@ -166,51 +178,7 @@ public class FacturaService : IFacturaService
     //    return ServiceResult<Factura>.Ok(factura, "Factura generada correctamente.");
     //}
 
-    public async Task<ServiceResult> SimularPagoStripeAsync(int facturaId)
-    {
-        var factura = await _context.Facturas
-            .Include(f => f.Pagos)
-            .FirstOrDefaultAsync(f => f.Id == facturaId);
-
-        if (factura == null)
-            return ServiceResult.Fail("La factura no existe.", "FACTURA_NO_EXISTE");
-
-        if (factura.Pagada == true)
-            return ServiceResult.Fail("La factura ya está pagada.", "FACTURA_PAGADA");
-
-        var metodoStripe = await _context.MetodoPagos
-            .FirstOrDefaultAsync(m => m.Nombre == "Stripe Simulado");
-
-        if (metodoStripe == null)
-        {
-            metodoStripe = new MetodoPago
-            {
-                Nombre = "Stripe Simulado"
-            };
-
-            _context.MetodoPagos.Add(metodoStripe);
-            await _context.SaveChangesAsync();
-        }
-
-        var pago = new Pago
-        {
-            FacturaId = factura.Id,
-            MetodoPagoId = metodoStripe.Id,
-            Monto = factura.Total,
-            FechaPago = DateTime.Now,
-            ReferenciaExterna = $"SIM-STRIPE-{Guid.NewGuid().ToString()[..8].ToUpper()}",
-            Activo = true
-        };
-
-        _context.Pagos.Add(pago);
-
-        factura.Pagada = true;
-
-        await _context.SaveChangesAsync();
-
-        return ServiceResult.Ok("Pago simulado con Stripe realizado correctamente.");
-    }
-
+    
     public async Task<List<Factura>> GetFiltradasAsync(
         string? search,
         bool? pagada,
@@ -228,7 +196,6 @@ public class FacturaService : IFacturaService
     {
         return await QueryFacturas(search, pagada).CountAsync();
     }
-
     public async Task<ServiceResult<string>> CrearCheckoutStripeAsync(
     int facturaId,
     string successUrl,
@@ -236,6 +203,7 @@ public class FacturaService : IFacturaService
     {
         var factura = await _context.Facturas
             .Include(f => f.Usuario)
+            .Include(f => f.FacturaDetalles)
             .FirstOrDefaultAsync(f => f.Id == facturaId && f.Activo == true);
 
         if (factura == null)
@@ -244,7 +212,7 @@ public class FacturaService : IFacturaService
         if (factura.Pagada == true)
             return ServiceResult<string>.Fail("La factura ya está pagada.", "FACTURA_PAGADA");
 
-        var amount = (long)Math.Round(factura.Total * 100);
+        var amount = (long)Math.Round(factura.Total * 100, MidpointRounding.AwayFromZero);
 
         if (amount <= 0)
             return ServiceResult<string>.Fail("El importe de la factura no es válido.", "IMPORTE_INVALIDO");
@@ -252,10 +220,21 @@ public class FacturaService : IFacturaService
         var options = new SessionCreateOptions
         {
             Mode = "payment",
-            SuccessUrl = successUrl + "?facturaId=" + factura.Id + "&session_id={CHECKOUT_SESSION_ID}",
-            CancelUrl = cancelUrl + "?facturaId=" + factura.Id,
+            SuccessUrl = $"{successUrl}?facturaId={factura.Id}&session_id={{CHECKOUT_SESSION_ID}}",
+            CancelUrl = $"{cancelUrl}?facturaId={factura.Id}",
             ClientReferenceId = factura.Id.ToString(),
             CustomerEmail = factura.Usuario?.Email,
+            PaymentIntentData = new SessionPaymentIntentDataOptions
+            {
+                Metadata = new Dictionary<string, string>
+            {
+                { "FacturaId", factura.Id.ToString() },
+                { "NumeroFactura", factura.NumeroFactura },
+                { "Subtotal", factura.Subtotal.ToString("0.00") },
+                { "IVA", factura.Impuestos.ToString("0.00") },
+                { "Total", factura.Total.ToString("0.00") }
+            }
+            },
             LineItems = new List<SessionLineItemOptions>
         {
             new()
@@ -267,7 +246,8 @@ public class FacturaService : IFacturaService
                     UnitAmount = amount,
                     ProductData = new SessionLineItemPriceDataProductDataOptions
                     {
-                        Name = $"Factura {factura.NumeroFactura}"
+                        Name = $"Factura {factura.NumeroFactura}",
+                        Description = $"Subtotal: {factura.Subtotal:0.00} €, IVA: {factura.Impuestos:0.00} €, Total: {factura.Total:0.00} €"
                     }
                 }
             }
@@ -275,7 +255,8 @@ public class FacturaService : IFacturaService
             Metadata = new Dictionary<string, string>
         {
             { "FacturaId", factura.Id.ToString() },
-            { "NumeroFactura", factura.NumeroFactura }
+            { "NumeroFactura", factura.NumeroFactura },
+            { "Origen", "FitControlWeb" }
         }
         };
 
@@ -288,9 +269,75 @@ public class FacturaService : IFacturaService
         return ServiceResult<string>.Ok(session.Url, "Sesión de Stripe creada correctamente.");
     }
 
+    //public async Task<ServiceResult<string>> CrearCheckoutStripeAsync(
+    //int facturaId,
+    //string successUrl,
+    //string cancelUrl)
+    //{
+    //    var factura = await _context.Facturas
+    //        .Include(f => f.Usuario)
+    //        .FirstOrDefaultAsync(f => f.Id == facturaId && f.Activo == true);
+
+    //    if (factura == null)
+    //        return ServiceResult<string>.Fail("La factura no existe.", "FACTURA_NO_EXISTE");
+
+    //    if (factura.Pagada == true)
+    //        return ServiceResult<string>.Fail("La factura ya está pagada.", "FACTURA_PAGADA");
+
+    //    var amount = (long)Math.Round(factura.Total * 100);
+
+    //    if (amount <= 0)
+    //        return ServiceResult<string>.Fail("El importe de la factura no es válido.", "IMPORTE_INVALIDO");
+
+    //    var options = new SessionCreateOptions
+    //    {
+    //        Mode = "payment",
+    //        SuccessUrl = successUrl + "?facturaId=" + factura.Id + "&session_id={CHECKOUT_SESSION_ID}",
+    //        CancelUrl = cancelUrl + "?facturaId=" + factura.Id,
+    //        ClientReferenceId = factura.Id.ToString(),
+    //        CustomerEmail = factura.Usuario?.Email,
+    //        LineItems = new List<SessionLineItemOptions>
+    //    {
+    //        new()
+    //        {
+    //            Quantity = 1,
+    //            PriceData = new SessionLineItemPriceDataOptions
+    //            {
+    //                Currency = "eur",
+    //                UnitAmount = amount,
+    //                ProductData = new SessionLineItemPriceDataProductDataOptions
+    //                {
+    //                    Name = $"Factura {factura.NumeroFactura}"
+    //                }
+    //            }
+    //        }
+    //    },
+    //        Metadata = new Dictionary<string, string>
+    //    {
+    //        { "FacturaId", factura.Id.ToString() },
+    //        { "NumeroFactura", factura.NumeroFactura },
+    //        { "Subtotal", factura.Subtotal.ToString("0.00") },
+    //        { "IVA", factura.Impuestos.ToString("0.00") },
+    //        { "Total", factura.Total.ToString("0.00") },
+    //        { "Tipo", "Factura FitControl" }
+    //    }
+    //    };
+
+    //    var service = new SessionService();
+    //    var session = await service.CreateAsync(options);
+
+    //    if (string.IsNullOrWhiteSpace(session.Url))
+    //        return ServiceResult<string>.Fail("No se pudo crear la sesión de Stripe.", "STRIPE_ERROR");
+
+    //    return ServiceResult<string>.Ok(session.Url, "Sesión de Stripe creada correctamente.");
+    //}
+
 
     public async Task<ServiceResult> ConfirmarPagoStripeAsync(int facturaId, string sessionId)
     {
+
+
+
         var factura = await _context.Facturas
             .Include(f => f.Pagos)
             .FirstOrDefaultAsync(f => f.Id == facturaId && f.Activo == true);
@@ -306,6 +353,9 @@ public class FacturaService : IFacturaService
 
         if (session == null || session.PaymentStatus != "paid")
             return ServiceResult.Fail("El pago todavía no aparece como completado en Stripe.", "STRIPE_NO_PAGADO");
+
+        if (session.ClientReferenceId != factura.Id.ToString())
+            return ServiceResult.Fail("La sesión de Stripe no corresponde con esta factura.", "STRIPE_FACTURA_NO_COINCIDE");
 
         var metodoStripe = await _context.MetodoPagos
             .FirstOrDefaultAsync(m => m.Nombre == "Stripe");

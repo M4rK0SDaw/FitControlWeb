@@ -1,19 +1,9 @@
-﻿using System.Net;
-using System.Net.Mail;
-using System.Security.Cryptography;
-using FitControlWeb.ViewModels.Auth;
-using Microsoft.EntityFrameworkCore;
-using FitControlWeb.Data;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
 using FitControlWeb.ViewModels;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using FitControlWeb.ViewModels.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-
-
 
 namespace FitControlWeb.Controllers;
 
@@ -21,19 +11,19 @@ public class AccountController : Controller
 {
     private readonly IAuthService _authService;
     private readonly IUsuarioService _usuarioService;
-    private readonly FitControlDbContext _context;    
-    private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<AccountController> _logger;
 
-    public AccountController(IAuthService authService,
-                             IUsuarioService usuarioService,
-                             FitControlDbContext context,
-                             IConfiguration configuration)
+    public AccountController(
+        IAuthService authService,
+        IUsuarioService usuarioService,
+        IEmailService emailService,
+        ILogger<AccountController> logger)
     {
         _authService = authService;
         _usuarioService = usuarioService;
-        _context = context;
-        _configuration = configuration;
-
+        _emailService = emailService;
+        _logger = logger;
     }
 
     [AllowAnonymous]
@@ -41,18 +31,7 @@ public class AccountController : Controller
     public IActionResult Login()
     {
         if (User.Identity != null && User.Identity.IsAuthenticated)
-        {
-            if (User.IsInRole("Administrador"))
-                return RedirectToAction("Index", "Dashboard");
-
-            if (User.IsInRole("Cliente"))
-                return RedirectToAction("Index", "ClienteDashboard");
-
-            if (User.IsInRole("Entrenador"))
-                return RedirectToAction("Index", "Clases");
-
-            return RedirectToAction("Index", "Home");
-        }
+            return RedirectByRole();
 
         return View();
     }
@@ -65,16 +44,6 @@ public class AccountController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var usuario = await _context.Usuarios   
-            .Include(u => u.Rol)
-            .FirstOrDefaultAsync(u => u.Email == model.Email);
-
-        if (usuario == null)
-        {
-            ModelState.AddModelError("", "Email o contraseña incorrectos.");
-            return View(model);
-        }
-
         var usuarioValidado = await _authService.ValidateLoginAsync(model.Email, model.Password);
 
         if (usuarioValidado == null)
@@ -83,65 +52,49 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var refreshToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
-            .Replace("+", "")
-            .Replace("/", "")
-            .Replace("=", "");
+        await _authService.SignInAsync(usuarioValidado, model.RememberMe);
 
-        var refreshTokenExpiry = model.RememberMe
-            ? DateTime.Now.AddDays(7)
-            : DateTime.Now.AddHours(8);
+        return RedirectByRole(usuarioValidado.Rol.Nombre);
+    }
 
-        usuarioValidado.RefreshToken = refreshToken;
-        usuarioValidado.RefreshTokenExpiryTime = refreshTokenExpiry;
-
-        await _context.SaveChangesAsync();
-
-        var claims = new List<Claim>
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult Register()
     {
-        new(ClaimTypes.NameIdentifier, usuarioValidado.Id.ToString()),
-        new(ClaimTypes.Name, usuarioValidado.Email),
-        new(ClaimTypes.Role, usuarioValidado.Rol.Nombre),
-        new("NombreCompleto", $"{usuarioValidado.Nombre} {usuarioValidado.Apellidos}"),
-        new("RefreshToken", refreshToken)
-    };
+        return View();
+    }
 
-        var identity = new ClaimsIdentity(
-            claims,
-            CookieAuthenticationDefaults.AuthenticationScheme);
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Register(RegisterViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
 
-        var principal = new ClaimsPrincipal(identity);
-
-        var authProperties = new AuthenticationProperties
+        if (await _usuarioService.EmailExistsAsync(model.Email))
         {
-            IsPersistent = model.RememberMe,
-            ExpiresUtc = model.RememberMe
-                ? DateTimeOffset.UtcNow.AddDays(7)
-                : DateTimeOffset.UtcNow.AddHours(8)
+            ModelState.AddModelError("Email", "Ya existe un usuario con ese email.");
+            return View(model);
+        }
+
+        var usuario = new Usuario
+        {
+            Nombre = model.Nombre,
+            Apellidos = model.Apellidos,
+            Email = model.Email,
+            Telefono = model.Telefono,
+            RolId = 3
         };
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            principal,
-            authProperties);
+        await _authService.RegisterAsync(usuario, model.Password);
 
-        if (usuarioValidado.Rol.Nombre == "Administrador")
-            return RedirectToAction("Index", "Dashboard");
-
-        if (usuarioValidado.Rol.Nombre == "Cliente")
-            return RedirectToAction("Index", "ClienteDashboard");
-
-        if (usuarioValidado.Rol.Nombre == "Entrenador")
-            return RedirectToAction("Index", "EntrenadorDashboard");
-
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction(nameof(Login));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-
         await _authService.LogoutAsync();
         return RedirectToAction(nameof(Login));
     }
@@ -154,284 +107,102 @@ public class AccountController : Controller
 
     [AllowAnonymous]
     [HttpGet]
-    public IActionResult Register()
-    {
-        return View();
-    }   
-
-    [HttpPost]
-    [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterViewModel model)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var email = model.Email.Trim().ToLower();
-
-        var existeEmail = await _context.Usuarios
-            .AnyAsync(u => u.Email.ToLower() == email);
-
-        if (existeEmail)
-        {
-            ModelState.AddModelError(nameof(model.Email), "Ya existe un usuario con este email.");
-            return View(model);
-        }
-
-        var rolCliente = await _context.Rols
-            .FirstOrDefaultAsync(r => r.Nombre == "Cliente");
-        
-        int rolClienteId = rolCliente != null ? rolCliente.Id : 0;
-        // auditoria se creaun registro par qaue el Adminsitardor vea que hay que manejar un error 
-        
-
-        var usuario = new Usuario
-        {
-            Nombre = model.Nombre.Trim(),
-            Apellidos = model.Apellidos.Trim(),
-            Email = email,
-            Telefono = model.Telefono,
-            RolId = rolClienteId,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-            FechaRegistro = DateTime.Now,
-            Activo = true,
-            Bloqueado = false,
-            IntentosFallidos = 0
-        };
-
-        _context.Usuarios.Add(usuario);
-        await _context.SaveChangesAsync();
-
-        TempData["Success"] = "Cuenta creada correctamente. Ya puedes iniciar sesión.";
-        return RedirectToAction(nameof(Login));
-    }
-
-
-    [HttpGet]
-    [AllowAnonymous]
     public IActionResult ForgotPassword()
     {
         return View(new ForgotPasswordViewModel());
     }
 
-    [HttpPost]
     [AllowAnonymous]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
     {
-    try
-{
         if (!ModelState.IsValid)
             return View(model);
 
-        var email = model.Email.Trim().ToLower();
+        var result = await _authService.PrepararRecuperacionPasswordAsync(model.Email);
 
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u =>
-                u.Email.ToLower() == email &&
-                u.Activo == true &&
-                u.Bloqueado != true);
-
-        // Respuesta genérica por seguridad
-        if (usuario == null)
+        if (result.Success && result.Data != null)
         {
-            TempData["Success"] = "Si el email existe, recibirás instrucciones para restablecer la contraseña.";
-            return RedirectToAction(nameof(Login));
+            var resetLink = Url.Action(
+                nameof(ResetPassword),
+                "Account",
+                new { token = result.Data.RefreshToken },
+                Request.Scheme);
+
+            if (!string.IsNullOrWhiteSpace(resetLink))
+            {
+                var body = $"""
+                    <p>Hola {result.Data.Nombre},</p>
+                    <p>Hemos recibido una solicitud para restablecer tu contraseña en FitControl Web.</p>
+                    <p>Pulsa en el siguiente enlace para continuar:</p>
+                    <p><a href="{resetLink}">Restablecer contraseña</a></p>
+                    <p>Este enlace caduca en 1 hora.</p>
+                    <p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+                    """;
+
+                try
+                {
+                    await _emailService.SendAsync(result.Data.Email, "Restablecer contraseña - FitControl Web", body);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error al enviar email de recuperación para usuario {UserId}", result.Data.Id);
+                    TempData["Error"] = "No se pudo enviar el correo de recuperación. Inténtalo de nuevo.";
+                    return View(model);
+                }
+            }
         }
 
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-
-        usuario.RefreshToken = token;
-        usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(30);
-
-        await _context.SaveChangesAsync();
-
-        var resetLink = Url.Action(
-            nameof(ResetPassword),
-            "Account",
-            new { email = usuario.Email, token },
-            Request.Scheme);
-
-        var body = $@"
-        <h2>Restablecer contraseña</h2>
-        <p>Has solicitado cambiar tu contraseña en FitControl Web.</p>
-        <p>Haz clic en el siguiente enlace:</p>
-        <p><a href='{resetLink}'>Restablecer contraseña</a></p>
-        <p>Este enlace caduca en 30 minutos.</p>
-        <p>Si no solicitaste este cambio, ignora este mensaje.</p>
-    ";
-/*
-        await EnviarEmailAsync(
-            usuario.Email,
-            "Restablecer contraseña - FitControl Web",
-            body);
-
-        TempData["Success"] = "Si el email existe, recibirás instrucciones para restablecer la contraseña.";
+        TempData["Success"] = "Si el email existe, recibirás un enlace para restablecer tu contraseña.";
         return RedirectToAction(nameof(Login));
-        */
-
-    await EnviarEmailAsync(
-        usuario.Email,
-        "Restablecer contraseña - FitControl Web",
-        body);
-
-    TempData["Success"] = "Si el email existe, recibirás instrucciones para restablecer la contraseña.";
-    return RedirectToAction(nameof(Login));
-}
-catch (Exception ex)
-{
-    Console.WriteLine("[FORGOT PASSWORD ERROR]");
-    Console.WriteLine(ex.ToString());
-
-    TempData["Error"] = "No se pudo enviar el correo de recuperación. Revisa la configuración del email en Azure.";
-    return RedirectToAction(nameof(ForgotPassword));
-}
-
-        
     }
 
-    [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> ResetPassword(string email, string token)
+    [HttpGet]
+    public async Task<IActionResult> ResetPassword(string token)
     {
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
-            return RedirectToAction(nameof(Login));
-
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u =>
-                u.Email == email &&
-                u.RefreshToken == token &&
-                u.RefreshTokenExpiryTime > DateTime.Now);
-
-        if (usuario == null)
+        if (!await _authService.TokenRecuperacionValidoAsync(token))
         {
-            TempData["Error"] = "El enlace de recuperación no es válido o ha caducado.";
+            TempData["Error"] = "El enlace de recuperación es inválido o ha caducado.";
             return RedirectToAction(nameof(Login));
         }
 
-        var vm = new ResetPasswordViewModel
-        {
-            Email = email,
-            Token = token
-        };
-
-        return View(vm);
+        return View(new ResetPasswordViewModel { Token = token });
     }
 
-    [HttpPost]
     [AllowAnonymous]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
     {
         if (!ModelState.IsValid)
             return View(model);
 
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u =>
-                u.Email == model.Email &&
-                u.RefreshToken == model.Token &&
-                u.RefreshTokenExpiryTime > DateTime.Now);
+        var result = await _authService.ResetPasswordAsync(model.Token, model.Password);
 
-        if (usuario == null)
+        if (!result.Success)
         {
-            TempData["Error"] = "El enlace de recuperación no es válido o ha caducado.";
+            TempData["Error"] = result.Message;
             return RedirectToAction(nameof(Login));
         }
 
-        usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
-        usuario.RefreshToken = null;
-        usuario.RefreshTokenExpiryTime = null;
-        usuario.IntentosFallidos = 0;
-        usuario.Bloqueado = false;
-
-        await _context.SaveChangesAsync();
-
-        TempData["Success"] = "Contraseña actualizada correctamente. Ya puedes iniciar sesión.";
+        TempData["Success"] = result.Message;
         return RedirectToAction(nameof(Login));
     }
 
-private async Task EnviarEmailAsync(string destinatario, string asunto, string cuerpo)
-{
-    var smtp = _configuration["Email:Smtp"];
-    var portText = _configuration["Email:Port"];
-    var user = _configuration["Email:User"];
-    var password = _configuration["Email:Password"];
-    var from = _configuration["Email:From"];
-
-    Console.WriteLine($"[EMAIL] Intentando enviar a: {destinatario}");
-    Console.WriteLine($"[EMAIL] SMTP: {smtp}");
-    Console.WriteLine($"[EMAIL] PORT: {portText}");
-    Console.WriteLine($"[EMAIL] USER: {user}");
-    Console.WriteLine($"[EMAIL] FROM: {from}");
-    Console.WriteLine($"[EMAIL] PASSWORD EMPTY: {string.IsNullOrWhiteSpace(password)}");
-
-    if (string.IsNullOrWhiteSpace(smtp) ||
-        string.IsNullOrWhiteSpace(portText) ||
-        string.IsNullOrWhiteSpace(user) ||
-        string.IsNullOrWhiteSpace(password) ||
-        string.IsNullOrWhiteSpace(from))
+    private IActionResult RedirectByRole(string? rol = null)
     {
-        throw new InvalidOperationException("Falta configuración SMTP en Azure.");
+        rol ??= User.IsInRole("Administrador") ? "Administrador" :
+            User.IsInRole("Cliente") ? "Cliente" :
+            User.IsInRole("Entrenador") ? "Entrenador" : null;
+
+        return rol switch
+        {
+            "Administrador" => RedirectToAction("Index", "Dashboard"),
+            "Cliente" => RedirectToAction("Index", "ClienteDashboard"),
+            "Entrenador" => RedirectToAction("Index", "EntrenadorDashboard"),
+            _ => RedirectToAction("Index", "Home")
+        };
     }
-
-    var port = int.Parse(portText);
-
-    using var client = new SmtpClient(smtp, port)
-    {
-        Credentials = new NetworkCredential(user, password),
-        EnableSsl = true
-    };
-
-    using var mail = new MailMessage
-    {
-        From = new MailAddress(from),
-        Subject = asunto,
-        Body = cuerpo,
-        IsBodyHtml = true
-    };
-
-    mail.To.Add(destinatario);
-
-    await client.SendMailAsync(mail);
-
-    Console.WriteLine("[EMAIL] Enviado correctamente.");
-}
-/*
-    private async Task EnviarEmailAsync(string to, string subject, string htmlBody)
-    {
-    try
-        {
-        var from = _configuration["Email:From"];
-        var user = _configuration["Email:User"];
-        var password = _configuration["Email:Password"];
-        var smtp = _configuration["Email:Smtp"];
-        var port = int.Parse(_configuration["Email:Port"] ?? "587");
-
-        using var client = new SmtpClient(smtp, port)
-        {
-            EnableSsl = true,
-            Credentials = new NetworkCredential(user, password)
-        };
-
-        using var message = new MailMessage
-        {
-            From = new MailAddress(from!),
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
-        };
-
-        message.To.Add(to);
-
-        //await client.SendMailAsync(message);
-        
-            await client.SendMailAsync(mail);
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error enviando email: " + ex.Message, ex);
-        }
-
-    }*/
-
 }

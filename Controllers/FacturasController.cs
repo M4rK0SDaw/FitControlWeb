@@ -1,11 +1,8 @@
-﻿using FitControlWeb.Data;
 using FitControlWeb.Helpers;
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-
 
 namespace FitControlWeb.Controllers;
 
@@ -13,34 +10,24 @@ namespace FitControlWeb.Controllers;
 public class FacturasController : Controller
 {
     private readonly IFacturaService _facturaService;
-    private readonly FitControlDbContext _context;
 
-    public FacturasController(IFacturaService facturaService, FitControlDbContext context)
+    public FacturasController(IFacturaService facturaService)
     {
         _facturaService = facturaService;
-        _context = context;
-
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Index(
-    string? search,
-    bool? pagada,
-    int page = 1,
-    int pageSize = 10)
+        string? search,
+        bool? pagada,
+        int page = 1,
+        int pageSize = 10)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
 
-        var facturas = await _facturaService.GetFiltradasAsync(
-            search,
-            pagada,
-            page,
-            pageSize);
-
-        var totalItems = await _facturaService.CountFiltradasAsync(
-            search,
-            pagada);
+        var facturas = await _facturaService.GetFiltradasAsync(search, pagada, page, pageSize);
+        var totalItems = await _facturaService.CountFiltradasAsync(search, pagada);
 
         ViewBag.Search = search;
         ViewBag.Pagada = pagada;
@@ -48,7 +35,6 @@ public class FacturasController : Controller
         ViewBag.PageSize = pageSize;
         ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
         ViewBag.TotalFacturas = totalItems;
-
         ViewBag.TotalPagadas = facturas.Count(f => f.Pagada == true);
         ViewBag.TotalPendientes = facturas.Count(f => f.Pagada != true);
         ViewBag.ImportePagina = facturas.Sum(f => f.Total);
@@ -57,7 +43,6 @@ public class FacturasController : Controller
     }
 
     [Authorize(Roles = "Administrador,Cliente")]
-
     public async Task<IActionResult> Details(int id)
     {
         if (!await PuedeVerFacturaAsync(id))
@@ -88,20 +73,7 @@ public class FacturasController : Controller
         return RedirectToAction(nameof(Details), new { id = result.Data.Id });
     }
 
-    [Authorize(Roles = "Administrador")]
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SimularPagoStripe(int id)
-    {
-        var result = await _facturaService.SimularPagoStripeAsync(id);
-
-        TempData[result.Success ? "Success" : "Error"] = result.Message;
-
-        return RedirectToAction(nameof(Details), new { id });
-    }
-
     [Authorize(Roles = "Administrador,Cliente")]
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PagarConStripe(int id)
@@ -109,17 +81,8 @@ public class FacturasController : Controller
         if (!await PuedeVerFacturaAsync(id))
             return Forbid();
 
-        var successUrl = Url.Action(
-            nameof(StripeSuccess),
-            "Facturas",
-            null,
-            Request.Scheme)!;
-
-        var cancelUrl = Url.Action(
-            nameof(StripeCancel),
-            "Facturas",
-            null,
-            Request.Scheme)!;
+        var successUrl = Url.Action(nameof(StripeSuccess), "Facturas", null, Request.Scheme)!;
+        var cancelUrl = Url.Action(nameof(StripeCancel), "Facturas", null, Request.Scheme)!;
 
         var result = await _facturaService.CrearCheckoutStripeAsync(id, successUrl, cancelUrl);
 
@@ -156,23 +119,23 @@ public class FacturasController : Controller
 
         var headers = new[]
         {
-        "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
-    };
+            "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
+        };
 
         var bytes = ExportHelper.ToCsv(
             facturas,
             headers,
             f => new[]
             {
-            f.NumeroFactura,
-            $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-            f.Usuario?.Email ?? "",
-            f.TipoFactura?.Nombre ?? "",
-            f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
-            f.Subtotal.ToString("0.00"),
-            f.Impuestos.ToString("0.00"),
-            f.Total.ToString("0.00"),
-            f.Pagada == true ? "Pagada" : "Pendiente"
+                f.NumeroFactura,
+                $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
+                f.Usuario?.Email ?? "",
+                f.TipoFactura?.Nombre ?? "",
+                f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
+                f.Subtotal.ToString("0.00"),
+                f.Impuestos.ToString("0.00"),
+                f.Total.ToString("0.00"),
+                f.Pagada == true ? "Pagada" : "Pendiente"
             });
 
         return File(bytes, "text/csv", "facturas.csv");
@@ -185,22 +148,22 @@ public class FacturasController : Controller
 
         var filters = new[]
         {
-        $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-        $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
-    };
+            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
+            $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
+        };
 
         var summary = new List<ReportSummaryItem>
-    {
-        new() { Label = "Total facturas", Value = facturas.Count.ToString() },
-        new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
-        new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
-        new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
-    };
+        {
+            new() { Label = "Total facturas", Value = facturas.Count.ToString() },
+            new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
+            new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
+            new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
+        };
 
         var headers = new[]
         {
-        "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
-    };
+            "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
+        };
 
         var bytes = ExportHelper.ToExcel(
             facturas,
@@ -212,15 +175,15 @@ public class FacturasController : Controller
             headers,
             f => new object[]
             {
-            f.NumeroFactura,
-            $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-            f.Usuario?.Email ?? "",
-            f.TipoFactura?.Nombre ?? "",
-            f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
-            f.Subtotal,
-            f.Impuestos,
-            f.Total,
-            f.Pagada == true ? "Pagada" : "Pendiente"
+                f.NumeroFactura,
+                $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
+                f.Usuario?.Email ?? "",
+                f.TipoFactura?.Nombre ?? "",
+                f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
+                f.Subtotal,
+                f.Impuestos,
+                f.Total,
+                f.Pagada == true ? "Pagada" : "Pendiente"
             });
 
         return File(
@@ -238,22 +201,19 @@ public class FacturasController : Controller
 
             var filters = new[]
             {
-            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
-        };
+                $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
+                $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
+            };
 
             var summary = new List<ReportSummaryItem>
-        {
-            new() { Label = "Total facturas", Value = facturas.Count.ToString() },
-            new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
-            new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
-            new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
-        };
-
-            var headers = new[]
             {
-            "Número", "Cliente", "Fecha", "Total", "Estado"
-        };
+                new() { Label = "Total facturas", Value = facturas.Count.ToString() },
+                new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
+                new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
+                new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
+            };
+
+            var headers = new[] { "Número", "Cliente", "Fecha", "Total", "Estado" };
 
             var bytes = ExportHelper.ToPdf(
                 facturas,
@@ -264,11 +224,11 @@ public class FacturasController : Controller
                 headers,
                 f => new[]
                 {
-                f.NumeroFactura,
-                $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-                f.FechaEmision?.ToString("dd/MM/yyyy") ?? "",
-                $"{f.Total:0.00} €",
-                f.Pagada == true ? "Pagada" : "Pendiente"
+                    f.NumeroFactura,
+                    $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
+                    f.FechaEmision?.ToString("dd/MM/yyyy") ?? "",
+                    $"{f.Total:0.00} €",
+                    f.Pagada == true ? "Pagada" : "Pendiente"
                 });
 
             return File(bytes, "application/pdf", "facturas.pdf");
@@ -279,7 +239,6 @@ public class FacturasController : Controller
             return RedirectToAction(nameof(Index), new { search, pagada });
         }
     }
-
 
     [Authorize(Roles = "Administrador,Cliente")]
     [HttpGet]
@@ -295,25 +254,45 @@ public class FacturasController : Controller
 
         var bytes = FacturaPdfHelper.GenerarFacturaPdf(factura);
 
-        return File(bytes, "application/pdf", $"factura-{factura.NumeroFactura}.pdf");     
+        return File(bytes, "application/pdf", CrearNombreFacturaPdf(factura.NumeroFactura));
+    }
+
+    [Authorize(Roles = "Administrador,Cliente")]
+    [HttpGet]
+    public async Task<IActionResult> VerPdf(int id)
+    {
+        if (!await PuedeVerFacturaAsync(id))
+            return Forbid();
+
+        var factura = await _facturaService.GetByIdAsync(id);
+
+        if (factura == null)
+            return NotFound();
+
+        var bytes = FacturaPdfHelper.GenerarFacturaPdf(factura);
+
+        Response.Headers.ContentDisposition = $"inline; filename=\"{CrearNombreFacturaPdf(factura.NumeroFactura)}\"";
+
+        return File(bytes, "application/pdf");
     }
 
     private async Task<bool> PuedeVerFacturaAsync(int facturaId)
     {
-        if (User.IsInRole("Administrador"))
-            return true;
+        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        if (User.IsInRole("Cliente"))
-        {
-            int usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-            return await _context.Facturas.AnyAsync(f =>
-                f.Id == facturaId &&
-                f.UsuarioId == usuarioId &&
-                f.Activo == true);
-        }
-
-        return false;
+        return await _facturaService.PuedeVerFacturaAsync(
+            facturaId,
+            usuarioId,
+            User.IsInRole("Administrador"));
     }
 
+    private static string CrearNombreFacturaPdf(string numeroFactura)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var numeroSeguro = new string(numeroFactura
+            .Select(c => invalidChars.Contains(c) ? '-' : c)
+            .ToArray());
+
+        return $"factura-{numeroSeguro}.pdf";
+    }
 }
