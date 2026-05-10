@@ -5,7 +5,7 @@ namespace FitControlWeb.Services.Interfaces;
 
 public interface IAuthService
 {
-    Task<Usuario?> ValidateLoginAsync(string email, string password);
+    Task<ServiceResult<Usuario>> ValidateLoginAsync(string email, string password);
     Task SignInAsync(Usuario usuario, bool rememberMe);
     Task RegisterAsync(Usuario usuario, string password);
     Task LogoutAsync();

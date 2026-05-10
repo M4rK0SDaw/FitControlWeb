@@ -20,17 +20,20 @@ public class AuthService : IAuthService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<Usuario?> ValidateLoginAsync(string email, string password)
+    public async Task<ServiceResult<Usuario>> ValidateLoginAsync(string email, string password)
     {
         var usuario = await _context.Usuarios
             .Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.Email == email);
 
         if (usuario == null)
-            return null;
+            return ServiceResult<Usuario>.Fail("Email o contrasena incorrectos.", "INVALID_CREDENTIALS");
 
-        if (usuario.Activo != true || usuario.Bloqueado == true)
-            return null;
+        if (usuario.Activo != true)
+            return ServiceResult<Usuario>.Fail("La cuenta no esta activa.", "ACCOUNT_INACTIVE");
+
+        if (usuario.Bloqueado == true)
+            return ServiceResult<Usuario>.Fail("La cuenta esta bloqueada. Revisa tu email para recuperarla.", "ACCOUNT_BLOCKED");
 
         var passwordOk = BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
 
@@ -46,11 +49,20 @@ public class AuthService : IAuthService
         {
             usuario.IntentosFallidos = (usuario.IntentosFallidos ?? 0) + 1;
 
+            var cuentaBloqueada = false;
             if (usuario.IntentosFallidos >= 5)
+            {
                 usuario.Bloqueado = true;
+                cuentaBloqueada = true;
+                usuario.RefreshToken = CrearToken();
+                usuario.RefreshTokenExpiryTime = DateTime.Now.AddHours(1);
+            }
 
             await _context.SaveChangesAsync();
-            return null;
+            if (cuentaBloqueada)
+                return ServiceResult<Usuario>.Fail("Tu cuenta ha sido bloqueada por seguridad.", "ACCOUNT_LOCKED", usuario);
+
+            return ServiceResult<Usuario>.Fail("Email o contrasena incorrectos.", "INVALID_CREDENTIALS");
         }
 
         usuario.IntentosFallidos = 0;
@@ -58,7 +70,7 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync();
 
-        return usuario;
+        return ServiceResult<Usuario>.Ok(usuario);
     }
 
     public async Task SignInAsync(Usuario usuario, bool rememberMe)

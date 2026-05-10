@@ -268,6 +268,36 @@ public static class FacturaPdfHelper
         }
 
         // =========================
+        // BLOQUE VERIFACTU (INFORMATIVO)
+        // =========================
+        var hashBase = $"{factura.NumeroFactura}|{factura.FechaEmision:yyyyMMddHHmmss}|{factura.Total:0.00}|{factura.UsuarioId}";
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(hashBase)));
+        var hashCorto = hash.Substring(0, 24);
+
+        var veriTable = new Table(UnitValue.CreatePercentArray(new float[] { 28, 72 }))
+            .UseAllAvailableWidth();
+
+        veriTable.AddCell(new Cell()
+            .SetBackgroundColor(colorGris)
+            .SetBorder(new SolidBorder(colorBorde, 1))
+            .SetPadding(8)
+            .Add(new Paragraph("VeriFactu")
+                .SetFont(fontBold)
+                .SetFontSize(10)
+                .SetFontColor(colorPrincipal)));
+
+        veriTable.AddCell(new Cell()
+            .SetBorder(new SolidBorder(colorBorde, 1))
+            .SetPadding(8)
+            .Add(new Paragraph($"Registro: {factura.NumeroFactura} | Huella: {hashCorto}")
+                .SetFont(font)
+                .SetFontSize(9)
+                .SetFontColor(colorTexto)));
+
+        document.Add(veriTable);
+        document.Add(new Paragraph("\n"));
+
+        // =========================
         // PIE
         // =========================
         document.Add(new Paragraph("Gracias por confiar en FitControl.")

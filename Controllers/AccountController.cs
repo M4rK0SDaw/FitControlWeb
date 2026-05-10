@@ -44,17 +44,48 @@ public class AccountController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var usuarioValidado = await _authService.ValidateLoginAsync(model.Email, model.Password);
+        var loginResult = await _authService.ValidateLoginAsync(model.Email, model.Password);
 
-        if (usuarioValidado == null)
+        if (!loginResult.Success || loginResult.Data == null)
         {
-            ModelState.AddModelError("", "Email o contraseña incorrectos.");
+            if (loginResult.Code == "ACCOUNT_LOCKED")
+            {
+                var usuarioBloqueado = loginResult.Data;
+                var token = usuarioBloqueado?.RefreshToken;
+                var resetLink = !string.IsNullOrWhiteSpace(token)
+                    ? Url.Action(nameof(ResetPassword), "Account", new { token }, Request.Scheme)
+                    : null;
+
+                if (!string.IsNullOrWhiteSpace(resetLink) && usuarioBloqueado != null)
+                {
+                    var body = $"""
+                        <p>Hola {usuarioBloqueado.Nombre},</p>
+                        <p>Tu cuenta se ha bloqueado por varios intentos de acceso fallidos.</p>
+                        <p>Para recuperarla, restablece tu contrasena aqui:</p>
+                        <p><a href="{resetLink}">Recuperar cuenta</a></p>
+                        <p>El enlace caduca en 1 hora.</p>
+                        """;
+
+                    try
+                    {
+                        await _emailService.SendAsync(usuarioBloqueado.Email, "Cuenta bloqueada - Recuperacion FitControl", body);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "No se pudo enviar el correo de recuperacion para {Email}", usuarioBloqueado.Email);
+                    }
+                }
+
+                TempData["Warning"] = "Cuenta bloqueada por seguridad. Revisa tu correo para recuperarla.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            ModelState.AddModelError("", loginResult.Message);
             return View(model);
         }
 
-        await _authService.SignInAsync(usuarioValidado, model.RememberMe);
-
-        return RedirectByRole(usuarioValidado.Rol.Nombre);
+        await _authService.SignInAsync(loginResult.Data, model.RememberMe);
+        return RedirectByRole(loginResult.Data.Rol.Nombre);
     }
 
     [AllowAnonymous]
@@ -88,6 +119,22 @@ public class AccountController : Controller
 
         await _authService.RegisterAsync(usuario, model.Password);
 
+        try
+        {
+            var body = $"""
+                <p>Hola {usuario.Nombre},</p>
+                <p>Bienvenido a FitControl Web.</p>
+                <p>Tu cuenta ya esta lista para reservar clases y gestionar tu actividad.</p>
+                """;
+
+            await _emailService.SendAsync(usuario.Email, "Bienvenido a FitControl Web", body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar el correo de bienvenida a {Email}", usuario.Email);
+        }
+
+        TempData["Success"] = "Registro completado. Ya puedes iniciar sesion.";
         return RedirectToAction(nameof(Login));
     }
 
@@ -134,27 +181,27 @@ public class AccountController : Controller
             {
                 var body = $"""
                     <p>Hola {result.Data.Nombre},</p>
-                    <p>Hemos recibido una solicitud para restablecer tu contraseña en FitControl Web.</p>
+                    <p>Hemos recibido una solicitud para restablecer tu contrasena en FitControl Web.</p>
                     <p>Pulsa en el siguiente enlace para continuar:</p>
-                    <p><a href="{resetLink}">Restablecer contraseña</a></p>
+                    <p><a href="{resetLink}">Restablecer contrasena</a></p>
                     <p>Este enlace caduca en 1 hora.</p>
                     <p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
                     """;
 
                 try
                 {
-                    await _emailService.SendAsync(result.Data.Email, "Restablecer contraseña - FitControl Web", body);
+                    await _emailService.SendAsync(result.Data.Email, "Restablecer contrasena - FitControl Web", body);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error al enviar email de recuperación para usuario {UserId}", result.Data.Id);
-                    TempData["Error"] = "No se pudo enviar el correo de recuperación. Inténtalo de nuevo.";
+                    _logger.LogError(ex, "Error al enviar email de recuperacion para usuario {UserId}", result.Data.Id);
+                    TempData["Error"] = "No se pudo enviar el correo de recuperacion. Intentalo de nuevo.";
                     return View(model);
                 }
             }
         }
 
-        TempData["Success"] = "Si el email existe, recibirás un enlace para restablecer tu contraseña.";
+        TempData["Success"] = "Si el email existe, recibiras un enlace para restablecer tu contrasena.";
         return RedirectToAction(nameof(Login));
     }
 
@@ -164,7 +211,7 @@ public class AccountController : Controller
     {
         if (!await _authService.TokenRecuperacionValidoAsync(token))
         {
-            TempData["Error"] = "El enlace de recuperación es inválido o ha caducado.";
+            TempData["Error"] = "El enlace de recuperacion es invalido o ha caducado.";
             return RedirectToAction(nameof(Login));
         }
 

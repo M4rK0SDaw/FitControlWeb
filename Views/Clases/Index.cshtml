@@ -14,6 +14,26 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" />
+    <style>
+        .clases-view-switch .btn.active {
+            background: var(--gym-orange, #ff7a00);
+            border-color: var(--gym-orange, #ff7a00);
+            color: #fff;
+        }
+
+        #clasesCalendar {
+            border: 1px solid #e7ebf1;
+            border-radius: 16px;
+            padding: 12px;
+            background: #fff;
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
+    </style>
 }
 
 <div class="page-card">
@@ -31,7 +51,7 @@
         </div>
 
         <div class="d-flex gap-2 align-items-center flex-wrap">
-            @if (User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+            @if (User.IsInRole("Administrador"))
             {
                 
                 var exportModel = new ExportButtonsViewModel
@@ -49,7 +69,6 @@
                     }
                 };
                 
-
                 <partial name="_ExportButtons" model="exportModel" />
             }
 
@@ -142,6 +161,22 @@
     </div>
 
     <div class="table-responsive">
+        <div class="d-flex justify-content-end mb-3">
+            <div class="btn-group clases-view-switch" role="group">
+                <button type="button" class="btn btn-outline-secondary btn-clases-view active" data-view="tabla">
+                    <i class="bi bi-table"></i> Tabla
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-clases-view" data-view="calendar">
+                    <i class="bi bi-calendar3-week"></i> Calendario
+                </button>
+            </div>
+        </div>
+
+        <div id="clasesCalendarWrap" class="mb-4 d-none">
+            <div id="clasesCalendar"></div>
+        </div>
+
+        <div id="clasesTablaWrap">
         <table class="table table-hover align-middle table-modern">
             <thead class="table-dark">
                 <tr>
@@ -296,6 +331,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 
     @if (totalPages > 1)
@@ -381,7 +417,62 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script>
+        const botonesVista = document.querySelectorAll('.btn-clases-view');
+        const tablaWrap = document.getElementById('clasesTablaWrap');
+        const calendarWrap = document.getElementById('clasesCalendarWrap');
+        let calendar = null;
+
+        function setVista(tipo) {
+            const esTabla = tipo === 'tabla';
+
+            tablaWrap.classList.toggle('d-none', !esTabla);
+            calendarWrap.classList.toggle('d-none', esTabla);
+
+            botonesVista.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === tipo);
+            });
+
+            if (!esTabla) {
+                initCalendar();
+                calendar?.render();
+            }
+        }
+
+        function initCalendar() {
+            if (calendar) return;
+
+            const search = '@(ViewBag.Search ?? "")';
+            const entrenadorId = '@(ViewBag.EntrenadorId?.ToString() ?? "")';
+            const especialidadId = '@(ViewBag.EspecialidadId?.ToString() ?? "")';
+            const estado = '@(ViewBag.Estado ?? "")';
+
+            calendar = new FullCalendar.Calendar(document.getElementById('clasesCalendar'), {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                height: 'auto',
+                events: `/Clases/CalendarEvents?search=${encodeURIComponent(search)}&entrenadorId=${encodeURIComponent(entrenadorId)}&especialidadId=${encodeURIComponent(especialidadId)}&estado=${encodeURIComponent(estado)}`,
+                eventClick: function(info) {
+                    const id = info.event.id;
+                    if (id) {
+                        window.location.href = `/Clases/Details/${id}`;
+                    }
+                }
+            });
+        }
+
+        botonesVista.forEach(btn => {
+            btn.addEventListener('click', function() {
+                setVista(this.dataset.view);
+            });
+        });
+
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.addEventListener('click', function () {
                 const form = this.closest('form');

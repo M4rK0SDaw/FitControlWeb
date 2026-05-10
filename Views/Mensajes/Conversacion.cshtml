@@ -105,9 +105,28 @@
 @section Scripts {
     <script>
         const chatBox = document.getElementById('chatBox');
+        const otroUsuarioId = '@(otroUsuario?.Id.ToString() ?? "")';
 
         if (chatBox) {
-            chatBox.scrollTop = chatBox.scrollHeight; 
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        if (window.signalR) {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl('/chatHub')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('chat:new-message', (payload) => {
+                if (!payload || !payload.remitenteId) return;
+                if (otroUsuarioId && payload.remitenteId.toString() === otroUsuarioId) {
+                    window.location.reload();
+                }
+            });
+
+            connection.start().catch(() => {
+                // Si falla realtime, la conversacion sigue funcionando con envio normal.
+            });
 
         }
     </script>

@@ -57,6 +57,22 @@
                                 @r.FechaReserva?.ToString("dd/MM/yyyy HH:mm")
                             </p>
 
+                            <div class="d-flex gap-2 mb-3">
+                                <a asp-controller="Clases"
+                                   asp-action="Details"
+                                   asp-route-id="@r.ClaseId"
+                                   class="btn btn-sm btn-outline-dark">
+                                    <i class="bi bi-eye"></i> Ver clase
+                                </a>
+
+                                <a asp-controller="EntrenadorDashboard"
+                                   asp-action="Publico"
+                                   asp-route-id="@r.Clase.EntrenadorId"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-person-badge"></i> Monitor
+                                </a>
+                            </div>
+
                             <form asp-action="Cancelar" asp-route-id="@r.Id" method="post">
                                 @Html.AntiForgeryToken()
                                 <button class="btn btn-outline-danger w-100">

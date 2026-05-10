@@ -10,4 +10,7 @@ public class ClienteContratarSuscripcionViewModel
     public int TipoSuscripcionId { get; set; }
 
     public List<TipoSuscripcion> TiposDisponibles { get; set; } = new();
+    public bool TieneSuscripcionActiva { get; set; }
+    public string? NombreSuscripcionActiva { get; set; }
+    public DateTime? FechaFinSuscripcionActiva { get; set; }
 }

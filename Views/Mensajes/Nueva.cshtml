@@ -1,7 +1,8 @@
-﻿@model IEnumerable<FitControlWeb.Models.Entities.Usuario>
+@model IEnumerable<FitControlWeb.Models.Entities.Usuario>
 
 @{
-    ViewData["Title"] = "Nueva conversación";
+    ViewData["Title"] = "Nueva conversacion";
+    var search = ViewBag.Search?.ToString() ?? "";
 }
 
 @section Styles {
@@ -12,8 +13,8 @@
 
     <div class="page-header flex-wrap gap-3">
         <div>
-            <h2 class="page-title">Nueva conversación</h2>
-            <p class="text-muted mb-0">Selecciona con quién quieres hablar</p>
+            <h2 class="page-title">Nueva conversacion</h2>
+            <p class="text-muted mb-0">Busca rapido y abre chat en un clic.</p>
         </div>
 
         <a asp-action="Index" class="btn btn-outline-secondary">
@@ -21,31 +22,63 @@
         </a>
     </div>
 
+    <div class="filter-box mb-4">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-10">
+                <label class="form-label">Buscar usuario</label>
+                <input type="text"
+                       class="form-control"
+                       name="search"
+                       value="@search"
+                       placeholder="Nombre, apellidos o email..." />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-orange w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+                <a asp-action="Nueva" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
     @if (!Model.Any())
     {
         <div class="alert alert-info">
-            No hay usuarios disponibles para iniciar conversación.
+            No hay usuarios disponibles con ese filtro.
         </div>
     }
     else
     {
-        <div class="row g-3">
-            @foreach (var u in Model)
-            {
-                <div class="col-md-4">
-                    <div class="info-box h-100">
-                        <h5 class="fw-bold mb-1">@u.Nombre @u.Apellidos</h5>
-                        <p class="text-muted mb-3">@u.Email</p>
-
-                        <a asp-action="Conversacion"
-                               asp-route-usuarioId="@u.Id"
-                               class="btn btn-orange w-100">
-                            <i class="bi bi-chat-dots"></i> Abrir conversación
-                        </a>
-                    </div>
-                </div>
-            }
+        <div class="table-responsive">
+            <table class="table table-modern table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Email</th>
+                        <th class="text-end">Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@u.Nombre @u.Apellidos</strong>
+                            </td>
+                            <td>@u.Email</td>
+                            <td class="text-end">
+                                <a asp-action="Conversacion"
+                                   asp-route-usuarioId="@u.Id"
+                                   class="btn btn-sm btn-orange">
+                                    <i class="bi bi-chat-dots me-1"></i> Abrir chat
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     }
-
 </div>

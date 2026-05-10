@@ -21,6 +21,41 @@
     box-shadow: 0 25px 60px rgba(0, 0, 0, .35);
 }
 
+@media (max-width: 991.98px) {
+    .login-page-wrapper {
+        background:
+            linear-gradient(rgba(17,17,17,.78), rgba(17,17,17,.88)),
+            url('/img/gym-banner.jpg') center/cover no-repeat;
+        padding: 20px 14px;
+    }
+
+    .auth-panel {
+        background: transparent;
+        min-height: 100vh;
+        align-items: flex-start !important;
+        padding-top: 24px !important;
+    }
+
+    .login-card {
+        max-width: 100%;
+        border-radius: 18px;
+        box-shadow: 0 16px 44px rgba(0, 0, 0, .35);
+    }
+
+    .login-card h3 {
+        font-size: 1.25rem;
+    }
+
+    .form-control-lg {
+        font-size: 1rem;
+        padding: .8rem .95rem;
+    }
+
+    .btn-gym-orange {
+        border-radius: 12px;
+    }
+}
+
 .btn-gym-orange {
     background: #ff7a00;
     color: #fff;

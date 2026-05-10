@@ -24,5 +24,8 @@
 
         public static new ServiceResult<T> Fail(string message, string? code = null) =>
             new() { Success = false, Message = message, Code = code };
+
+        public static ServiceResult<T> Fail(string message, string? code, T data) =>
+            new() { Success = false, Message = message, Code = code, Data = data };
     }
 }

@@ -1,4 +1,4 @@
-﻿@model FitControlWeb.ViewModels.ClientePerfilViewModel;
+@model FitControlWeb.ViewModels.Dashboard.EntrenadorPerfilViewModel
 @{
     ViewData["Title"] = "Mi perfil";
 
@@ -34,12 +34,12 @@
     <div class="page-header flex-wrap gap-3">
         <div>
             <h2 class="page-title">Mi perfil</h2>
-            <p class="text-muted mb-0">Gestiona tus datos personales como entrenador</p>
+            <p class="text-muted mb-0">Gestiona tus datos personales como entrenador.</p>
         </div>
 
         <a asp-controller="EntrenadorDashboard"
-               asp-action="Index"
-               class="btn btn-outline-secondary">
+           asp-action="Index"
+           class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
     </div>
@@ -86,6 +86,142 @@
             </div>
 
             <div class="col-lg-8">
+                <div class="info-box h-100">
+                    <h5 class="fw-bold mb-3">Datos personales</h5>
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label asp-for="Nombre" class="form-label"></label>
+                            <input asp-for="Nombre" class="form-control" />
+                            <span asp-validation-for="Nombre" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Apellidos" class="form-label"></label>
+                            <input asp-for="Apellidos" class="form-control" />
+                            <span asp-validation-for="Apellidos" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" readonly />
+                            <small class="text-muted">
+                                El email no se puede cambiar desde el perfil.
+                            </small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Telefono" class="form-label"></label>
+                            <input asp-for="Telefono" class="form-control" placeholder="600 000 000" />
+                            <span asp-validation-for="Telefono" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="NuevaPassword" class="form-label">Nueva contraseña</label>
+                            <input asp-for="NuevaPassword"
+                                   type="password"
+                                   class="form-control"
+                                   placeholder="Déjalo vacío si no quieres cambiarla" />
+                            <span asp-validation-for="NuevaPassword" class="text-danger small"></span>
+
+                            <p class="text-muted mb-0 mt-1">
+                                Si cambias tu contraseña, tendrás que usar la nueva contraseña en el próximo inicio de sesión.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- PREFERENCIAS VISUALES ABAJO A LA IZQUIERDA -->
+            <div class="col-lg-4">
+                <div class="info-box">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-palette me-2"></i>Preferencias visuales
+                    </h5>
+
+                    <div class="row g-3">
+
+                        <div class="col-12">
+                            <label for="preferenciaTema" class="form-label">Tema</label>
+                            <select id="preferenciaTema" class="form-select">
+                                <option value="light">Claro</option>
+                                <option value="dark">Oscuro</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="preferenciaFondo" class="form-label">Fondo</label>
+                            <select id="preferenciaFondo" class="form-select">
+                                <option value="soft">Suave</option>
+                                <option value="clean">Limpio</option>
+                                <option value="contrast">Contraste</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="preferenciaColor" class="form-label">Color principal</label>
+                            <input id="preferenciaColor"
+                                   type="color"
+                                   class="form-control form-control-color"
+                                   value="#ff7a00" />
+                        </div>
+
+                        <div class="col-12">
+                            <label for="preferenciaFuente" class="form-label">Tamaño de fuente</label>
+                            <select id="preferenciaFuente" class="form-select">
+                                <option value="0.95">Compacta</option>
+                                <option value="1">Normal</option>
+                                <option value="1.08">Grande</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 flex-wrap mt-3">
+                        <button type="button" class="btn btn-outline-secondary" id="btnResetPreferencias">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer
+                        </button>
+
+                        <button type="button" class="btn btn-orange" id="btnGuardarPreferencias">
+                            <i class="bi bi-check2-circle me-1"></i> Aplicar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+       @*  <div class="row g-4">
+
+            <div class="col-lg-4">
+                <div class="info-box h-100 text-center">
+
+                    <img id="previewFoto"
+                         src="@fotoUrl"
+                         alt="Foto de perfil"
+                         class="rounded-circle mb-3 shadow-sm"
+                         style="width: 150px; height: 150px; object-fit: cover;" />
+
+                    <h5 class="fw-bold mb-1">@Model.Nombre @Model.Apellidos</h5>
+                    <p class="text-muted mb-3">@Model.Email</p>
+
+                    <label for="Foto" class="form-label fw-semibold">Cambiar foto</label>
+
+                    <input type="file"
+                           name="Foto"
+                           id="Foto"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp" />
+
+                    <small class="text-muted d-block mt-2">
+                        JPG, PNG o WEBP. Maximo 5MB.
+                    </small>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
                 <div class="info-box">
                     <h5 class="fw-bold mb-3">Datos personales</h5>
 
@@ -116,24 +252,71 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label asp-for="NuevaPassword" class="form-label">Nueva contraseña</label>
+                            <label asp-for="NuevaPassword" class="form-label">Nueva contrasena</label>
                             <input asp-for="NuevaPassword"
                                    type="password"
                                    class="form-control"
-                                   placeholder="Déjalo vacío si no quieres cambiarla" />
+                                   placeholder="Dejalo vacio si no quieres cambiarla" />
                             <span asp-validation-for="NuevaPassword" class="text-danger small"></span>
                         </div>
+                    </div>
+                </div>
 
+                <div class="info-box mt-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-palette me-2"></i>Preferencias visuales
+                    </h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="preferenciaTema" class="form-label">Tema</label>
+                            <select id="preferenciaTema" class="form-select">
+                                <option value="light">Claro</option>
+                                <option value="dark">Oscuro</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="preferenciaFondo" class="form-label">Fondo</label>
+                            <select id="preferenciaFondo" class="form-select">
+                                <option value="soft">Suave</option>
+                                <option value="clean">Limpio</option>
+                                <option value="contrast">Contraste</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="preferenciaColor" class="form-label">Color principal</label>
+                            <input id="preferenciaColor" type="color" class="form-control form-control-color" value="#ff7a00" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="preferenciaFuente" class="form-label">Tamano de fuente</label>
+                            <select id="preferenciaFuente" class="form-select">
+                                <option value="0.95">Compacta</option>
+                                <option value="1">Normal</option>
+                                <option value="1.08">Grande</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 flex-wrap mt-3">
+                        <button type="button" class="btn btn-outline-secondary" id="btnResetPreferencias">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer
+                        </button>
+
+                        <button type="button" class="btn btn-orange" id="btnGuardarPreferencias">
+                            <i class="bi bi-check2-circle me-1"></i> Aplicar preferencias
+                        </button>
                     </div>
                 </div>
             </div>
-
-        </div>
+        </div> *@
 
         <div class="d-flex justify-content-end gap-2 mt-4">
             <a asp-controller="EntrenadorDashboard"
-                   asp-action="Index"
-                   class="btn btn-outline-secondary">
+               asp-action="Index"
+               class="btn btn-outline-secondary">
                 Cancelar
             </a>
 
@@ -153,36 +336,104 @@
 
         inputFoto.addEventListener('change', function () {
             const file = this.files[0];
-
             if (!file) return;
 
             const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
             if (!allowedTypes.includes(file.type)) {
                 this.value = '';
-
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Formato no válido',
-                    text: 'Usa JPG, PNG o WEBP.'
-                });
-
+                Swal.fire({ icon: 'error', title: 'Formato no valido', text: 'Usa JPG, PNG o WEBP.' });
                 return;
             }
 
             if (file.size > 5 * 1024 * 1024) {
                 this.value = '';
-
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Imagen demasiado grande',
-                    text: 'La imagen no puede superar los 5MB.'
-                });
-
+                Swal.fire({ icon: 'error', title: 'Imagen demasiado grande', text: 'La imagen no puede superar los 5MB.' });
                 return;
             }
 
             previewFoto.src = URL.createObjectURL(file);
+        });
+
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) {
+                return parts.pop().split(';').shift();
+            }
+            return null;
+        }
+
+        const tema = document.getElementById('preferenciaTema');
+        const fondo = document.getElementById('preferenciaFondo');
+        const color = document.getElementById('preferenciaColor');
+        const fuente = document.getElementById('preferenciaFuente');
+
+        function leerPreferencias() {
+            return {
+                theme: getCookie('fitcontrol-theme') || 'light',
+                background: getCookie('fitcontrol-background') || 'soft',
+                accent: getCookie('fitcontrol-accent') || '#ff7a00',
+                fontScale: getCookie('fitcontrol-font-scale') || '1'
+            };
+        }
+
+        function guardarPreferencias(preferences) {
+            setCookie('fitcontrol-theme', preferences.theme, 3650);
+            setCookie('fitcontrol-accent', preferences.accent, 3650);
+            setCookie('fitcontrol-background', preferences.background, 3650);
+            setCookie('fitcontrol-font-scale', preferences.fontScale, 3650);
+
+            document.body.classList.toggle('dark-mode', preferences.theme === 'dark');
+            document.dispatchEvent(new CustomEvent('fitcontrol:preferences-changed', { detail: preferences }));
+        }
+
+        function cargarPreferenciasEnFormulario() {
+            const preferences = leerPreferencias();
+            tema.value = preferences.theme;
+            fondo.value = preferences.background;
+            color.value = preferences.accent;
+            fuente.value = preferences.fontScale;
+        }
+
+        cargarPreferenciasEnFormulario();
+
+        document.getElementById('btnGuardarPreferencias').addEventListener('click', function () {
+            const preferences = {
+                theme: tema.value,
+                background: fondo.value,
+                accent: color.value,
+                fontScale: fuente.value
+            };
+
+            guardarPreferencias(preferences);
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Preferencias aplicadas',
+                showConfirmButton: false,
+                timer: 2200,
+                timerProgressBar: true
+            });
+        });
+
+        document.getElementById('btnResetPreferencias').addEventListener('click', function () {
+            guardarPreferencias({
+                theme: 'light',
+                background: 'soft',
+                accent: '#ff7a00',
+                fontScale: '1'
+            });
+
+            cargarPreferenciasEnFormulario();
         });
     </script>
 }

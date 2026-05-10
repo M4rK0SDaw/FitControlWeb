@@ -28,13 +28,23 @@
             </a>
         </div> *@
 
-        <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="btn btn-outline-dark">
-            <i class="bi bi-person-circle"></i> Mi perfil
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="btn btn-outline-dark">
+                <i class="bi bi-person-circle"></i> Mi perfil
+            </a>
 
-        <a asp-controller="Mensajes" asp-action="Index" class="btn btn-outline-dark">
-            <i class="bi bi-chat-dots"></i> Mensajes
-        </a>
+            <a asp-controller="Clases" asp-action="Index" class="btn btn-outline-primary">
+                <i class="bi bi-calendar2-week"></i> Mis clases
+            </a>
+
+            <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-success">
+                <i class="bi bi-journal-check"></i> Reservas
+            </a>
+
+            <a asp-controller="Mensajes" asp-action="Index" class="btn btn-outline-dark">
+                <i class="bi bi-chat-dots"></i> Mensajes
+            </a>
+        </div>
 
     </div>
 

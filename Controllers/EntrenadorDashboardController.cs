@@ -69,4 +69,16 @@ public class EntrenadorDashboardController : Controller
     {
         return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     }
+
+    [Authorize(Roles = "Administrador,Cliente,Entrenador")]
+    [HttpGet]
+    public async Task<IActionResult> Publico(int id)
+    {
+        var vm = await _entrenadorDashboardService.GetPerfilAsync(id);
+
+        if (vm == null)
+            return NotFound();
+
+        return View(vm);
+    }
 }

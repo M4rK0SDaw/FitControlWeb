@@ -210,6 +210,14 @@
         </div>
     </div>
 
+    @if (Model.TieneSuscripcionActiva)
+    {
+        <div class="alert alert-warning">
+            Ya tienes una suscripcion activa: <strong>@Model.NombreSuscripcionActiva</strong>.
+            Finaliza el @Model.FechaFinSuscripcionActiva?.ToString("dd/MM/yyyy") antes de contratar otra.
+        </div>
+    }
+
     <form asp-action="ContratarSuscripcion" method="post" id="formContratarSuscripcion">
         @Html.AntiForgeryToken()
 
@@ -231,7 +239,8 @@
                     <div class="subscription-card @(isSelected ? "selected" : "")"
                          data-tipo-id="@tipo.Id"
                          role="button"
-                         tabindex="0">
+                         tabindex="0"
+                         style="@(Model.TieneSuscripcionActiva ? "opacity:.65;cursor:not-allowed;" : "")">
 
                         <div class="subscription-icon">
                             <i class="bi bi-stars"></i>
@@ -288,6 +297,7 @@
             const cards = document.querySelectorAll('.subscription-card');
             const hiddenInput = document.getElementById('TipoSuscripcionId');
             const form = document.getElementById('formContratarSuscripcion');
+            const bloqueadoPorSuscripcion = @(Model.TieneSuscripcionActiva ? "true" : "false");
 
             function seleccionarSuscripcion(card) {
                 const tipoId = card.getAttribute('data-tipo-id');
@@ -300,18 +310,32 @@
 
             cards.forEach(card => {
                 card.addEventListener('click', function () {
+                    if (bloqueadoPorSuscripcion) return;
                     seleccionarSuscripcion(this);
                 });
 
                 card.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
+                        if (bloqueadoPorSuscripcion) return;
                         seleccionarSuscripcion(this);
                     }
                 });
             });
 
             form.addEventListener('submit', function (e) {
+                if (bloqueadoPorSuscripcion) {
+                    e.preventDefault();
+
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Suscripcion activa',
+                        text: 'No puedes contratar otra suscripcion hasta que finalice la actual.',
+                        confirmButtonColor: '#ff7a00'
+                    });
+                    return;
+                }
+
                 if (!hiddenInput.value || hiddenInput.value === '0') {
                     e.preventDefault();
 

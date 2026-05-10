@@ -27,6 +27,14 @@
                         popup: 'fit-toast'
                     }
                 });
+
+                const entry = {
+                    type: '@alert.Icon',
+                    title: '@alert.Title',
+                    text: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData[alert.Key]?.ToString() ?? ""))',
+                    time: new Date().toISOString()
+                };
+                document.dispatchEvent(new CustomEvent('fitcontrol:notify', { detail: entry }));
             });
         </script>
     }

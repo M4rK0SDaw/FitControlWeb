@@ -96,7 +96,7 @@ public class ClienteDashboardController : Controller
     [HttpGet]
     public async Task<IActionResult> ContratarSuscripcion()
     {
-        var vm = await _clienteDashboardService.GetContratarSuscripcionAsync();
+        var vm = await _clienteDashboardService.GetContratarSuscripcionAsync(GetUsuarioId());
         return View(vm);
     }
 
@@ -106,7 +106,7 @@ public class ClienteDashboardController : Controller
     {
         if (!ModelState.IsValid)
         {
-            var vm = await _clienteDashboardService.GetContratarSuscripcionAsync();
+            var vm = await _clienteDashboardService.GetContratarSuscripcionAsync(GetUsuarioId());
             vm.TipoSuscripcionId = model.TipoSuscripcionId;
             return View(vm);
         }
@@ -123,7 +123,7 @@ public class ClienteDashboardController : Controller
         if (!result.Success || string.IsNullOrWhiteSpace(result.Data))
         {
             TempData["Error"] = result.Message;
-            var vm = await _clienteDashboardService.GetContratarSuscripcionAsync();
+            var vm = await _clienteDashboardService.GetContratarSuscripcionAsync(GetUsuarioId());
             vm.TipoSuscripcionId = model.TipoSuscripcionId;
             return View(vm);
         }

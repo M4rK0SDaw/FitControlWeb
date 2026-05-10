@@ -1,7 +1,12 @@
-﻿using System.Text;
+using System.Text;
 using ClosedXML.Excel;
+using iText.IO.Font.Constants;
 using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 
@@ -32,21 +37,20 @@ public static class ExportHelper
     }
 
     public static byte[] ToExcel<T>(
-    IEnumerable<T> data,
-    string sheetName,
-    string title,
-    string subtitle,
-    string[] filters,
-    List<ReportSummaryItem> summary,
-    string[] headers,
-    Func<T, object[]> map)
+        IEnumerable<T> data,
+        string sheetName,
+        string title,
+        string subtitle,
+        string[] filters,
+        List<ReportSummaryItem> summary,
+        string[] headers,
+        Func<T, object[]> map)
     {
         using var workbook = new XLWorkbook();
         var ws = workbook.Worksheets.Add(sheetName);
 
         int totalColumns = headers.Length;
 
-        // Título
         ws.Range(1, 1, 1, totalColumns).Merge();
         ws.Cell(1, 1).Value = title;
         ws.Cell(1, 1).Style.Font.Bold = true;
@@ -55,7 +59,6 @@ public static class ExportHelper
         ws.Cell(1, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#111318");
         ws.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-        // Fecha
         ws.Range(2, 1, 2, totalColumns).Merge();
         ws.Cell(2, 1).Value = $"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}";
         ws.Cell(2, 1).Style.Font.Italic = true;
@@ -63,7 +66,6 @@ public static class ExportHelper
 
         int row = 4;
 
-        // Filtros
         if (filters.Any())
         {
             ws.Cell(row, 1).Value = "Filtros aplicados";
@@ -79,7 +81,6 @@ public static class ExportHelper
             row++;
         }
 
-        // Cabeceras
         for (int i = 0; i < headers.Length; i++)
         {
             var cell = ws.Cell(row, i + 1);
@@ -92,7 +93,6 @@ public static class ExportHelper
 
         row++;
 
-        // Datos
         foreach (var item in data)
         {
             var values = map(item);
@@ -120,53 +120,62 @@ public static class ExportHelper
     }
 
     public static byte[] ToPdf<T>(
-     IEnumerable<T> data,
-     string title,
-     string subtitle,
-     string[] filters,
-     List<ReportSummaryItem> summary,
-     string[] headers,
-     Func<T, string[]> map)
+        IEnumerable<T> data,
+        string title,
+        string subtitle,
+        string[] filters,
+        List<ReportSummaryItem> summary,
+        string[] headers,
+        Func<T, string[]> map)
     {
         using var stream = new MemoryStream();
 
         var writer = new PdfWriter(stream);
         var pdf = new PdfDocument(writer);
-        var document = new iText.Layout.Document(pdf);
+        var document = new Document(pdf, PageSize.A4.Rotate());
+        document.SetMargins(28, 24, 28, 24);
 
-        // =========================
-        // HEADER
-        // =========================
+        var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+        var fontBold = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+        var colorPrincipal = new DeviceRgb(255, 122, 0);
+        var colorTexto = new DeviceRgb(55, 65, 81);
+        var colorSuave = new DeviceRgb(248, 250, 252);
+        var colorBorde = new DeviceRgb(226, 232, 240);
+
+        var safeRows = data
+            .Select(map)
+            .Select(row => row.Select(LimpiarTextoPdf).ToArray())
+            .ToList();
+
         document.Add(
             new Paragraph("FITCONTROL WEB")
+                .SetFont(fontBold)
                 .SetFontSize(20)
-                .SimulateBold()
-                .SetTextAlignment(TextAlignment.CENTER)
-        );
+                .SetFontColor(colorPrincipal)
+                .SetTextAlignment(TextAlignment.CENTER));
 
         document.Add(
             new Paragraph(title)
-                .SetFontSize(14)
-                .SetTextAlignment(TextAlignment.CENTER)
-        );
+                .SetFont(fontBold)
+                .SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER));
 
         document.Add(
             new Paragraph(subtitle)
-                .SetFontSize(10)
-                .SetTextAlignment(TextAlignment.CENTER)
-        );
+                .SetFont(font)
+                .SetFontSize(9)
+                .SetFontColor(colorTexto)
+                .SetTextAlignment(TextAlignment.CENTER));
 
         document.Add(
             new Paragraph($"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}")
+                .SetFont(font)
                 .SetFontSize(9)
                 .SetTextAlignment(TextAlignment.RIGHT)
-        );
+                .SetFontColor(colorTexto));
 
-        document.Add(new Paragraph(" "));
+        document.Add(new Paragraph(" ").SetMarginBottom(4));
 
-        // =========================
-        // KPIs (RESUMEN)
-        // =========================
         if (summary.Any())
         {
             var kpiTable = new Table(summary.Count).UseAllAvailableWidth();
@@ -175,69 +184,87 @@ public static class ExportHelper
             {
                 kpiTable.AddCell(
                     new Cell()
+                        .SetBackgroundColor(colorSuave)
+                        .SetBorder(new SolidBorder(colorBorde, 1))
+                        .SetPadding(8)
                         .SetTextAlignment(TextAlignment.CENTER)
-                        .Add(new Paragraph(item.Label).SetFontSize(9))
-                        .Add(new Paragraph(item.Value).SimulateBold().SetFontSize(14))
-                );
+                        .Add(new Paragraph(item.Label).SetFont(font).SetFontSize(8).SetFontColor(colorTexto))
+                        .Add(new Paragraph(item.Value).SetFont(fontBold).SetFontSize(13)));
             }
 
             document.Add(kpiTable);
-            document.Add(new Paragraph(" "));
+            document.Add(new Paragraph(" ").SetMarginBottom(3));
         }
 
-        // =========================
-        // FILTROS
-        // =========================
         if (filters.Any())
         {
-            document.Add(new Paragraph("Filtros aplicados").SimulateBold());
+            document.Add(new Paragraph("Filtros aplicados").SetFont(fontBold).SetFontSize(10));
 
             foreach (var f in filters)
             {
-                document.Add(new Paragraph($"• {f}").SetFontSize(9));
+                document.Add(
+                    new Paragraph($"- {LimpiarTextoPdf(f)}")
+                        .SetFont(font)
+                        .SetFontSize(8.5f)
+                        .SetFontColor(colorTexto));
             }
 
-            document.Add(new Paragraph(" "));
+            document.Add(new Paragraph(" ").SetMarginBottom(3));
         }
 
-        // =========================
-        // TABLA
-        // =========================
-        var table = new Table(headers.Length).UseAllAvailableWidth();
+        var table = new Table(UnitValue.CreatePercentArray(headers.Length)).UseAllAvailableWidth();
+        table.SetFixedLayout();
 
         foreach (var h in headers)
         {
             table.AddHeaderCell(
                 new Cell()
-                    .SetBackgroundColor(new iText.Kernel.Colors.DeviceRgb(255, 122, 0))
-                    .SetFontColor(iText.Kernel.Colors.ColorConstants.WHITE)
+                    .SetBackgroundColor(colorPrincipal)
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPadding(7)
+                    .SetFont(fontBold)
+                    .SetFontColor(ColorConstants.WHITE)
                     .SetTextAlignment(TextAlignment.CENTER)
-                    .Add(new Paragraph(h))
-            );
+                    .Add(new Paragraph(LimpiarTextoPdf(h)).SetFontSize(8.5f)));
         }
 
-        foreach (var item in data)
+        foreach (var row in safeRows)
         {
-            foreach (var value in map(item))
+            foreach (var value in row)
             {
-                table.AddCell(value ?? "");
+                table.AddCell(
+                    new Cell()
+                        .SetBorder(new SolidBorder(colorBorde, 1))
+                        .SetPadding(6)
+                        .SetFont(font)
+                        .SetFontSize(8)
+                        .SetFontColor(colorTexto)
+                        .Add(new Paragraph(value).SetMargin(0)));
             }
         }
 
         document.Add(table);
 
-        // =========================
-        // FOOTER
-        // =========================
         document.Add(
-            new Paragraph("FitControl Web · Informe generado automáticamente")
+            new Paragraph("FitControl Web · Informe generado automaticamente")
+                .SetFont(font)
                 .SetFontSize(8)
+                .SetFontColor(ColorConstants.GRAY)
                 .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginTop(20)
-        );
+                .SetMarginTop(20));
 
         document.Close();
 
         return stream.ToArray();
+    }
+
+    private static string LimpiarTextoPdf(string? value)
+    {
+        var clean = (value ?? string.Empty)
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Trim();
+
+        return clean.Length > 90 ? clean[..87] + "..." : clean;
     }
 }

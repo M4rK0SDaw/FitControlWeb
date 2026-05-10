@@ -170,6 +170,10 @@
                             <i class="bi bi-clipboard2-pulse"></i><span>Mi panel</span>
                         </a>
 
+                        @* <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="sidebar-link @IsActive("EntrenadorDashboard", "Perfil")" title="Mi perfil">
+                            <i class="bi bi-person-badge"></i><span>Mi perfil</span>
+                        </a>
+ *@
                         <a asp-controller="Clases" asp-action="Index" class="sidebar-link @IsActive("Clases")" title="Mis clases">
                             <i class="bi bi-calendar2-week"></i><span>Mis clases</span>
                         </a>
@@ -231,6 +235,15 @@
                                 id="themeToggle"
                                 aria-label="Cambiar tema">
                             <i class="bi bi-moon-stars"></i><span>Tema</span>
+                        </button>
+
+                        <button type="button"
+                                class="quick-pill"
+                                data-bs-toggle="offcanvas"
+                                data-bs-target="#notificationsOffcanvas"
+                                aria-controls="notificationsOffcanvas">
+                            <i class="bi bi-bell"></i>
+                            <span>Notificaciones</span>
                         </button>
 
                         <div class="user-box">
@@ -319,14 +332,91 @@
         </div>
     }
 
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="offcanvas offcanvas-end notifications-offcanvas" tabindex="-1" id="notificationsOffcanvas" aria-labelledby="notificationsOffcanvasLabel">
+            <div class="offcanvas-header border-bottom">
+                <h5 class="offcanvas-title" id="notificationsOffcanvasLabel">
+                    <i class="bi bi-bell-fill me-2"></i>Notificaciones temporales
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearNotificationsBtn">
+                        Limpiar
+                    </button>
+                </div>
+                <div id="notificationsList" class="d-grid gap-2"></div>
+            </div>
+        </div>
+    }
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>
+        let chatPopupUsuarioActual = null;
+        let chatPopupConversacionActual = null;
+
+        function escapeHtml(value) {
+            return (value ?? '')
+                .toString()
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function appendChatMessage(message) {
+            const chatBox = document.getElementById('chatBoxPopup');
+            if (!chatBox || !message) return;
+
+            const emptyState = chatBox.querySelector('.alert');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `chat-message ${message.esMio ? 'mine' : 'other'}`;
+            wrapper.innerHTML = `
+                <div class="fw-semibold small mb-1">${escapeHtml(message.remitenteNombre)}</div>
+                <div>${escapeHtml(message.contenido)}</div>
+                <div class="chat-time mt-1">
+                    ${escapeHtml(message.fechaTexto)}
+                    ${message.esMio && message.leido ? '<span> · leido</span>' : ''}
+                </div>
+            `;
+
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function marcarConversacionLeida(conversacionId) {
+            const form = document.getElementById('chatEnviarForm');
+            const token = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+            if (!conversacionId || !token) return;
+
+            try {
+                await fetch('/Mensajes/MarcarLeidosAjax', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: `__RequestVerificationToken=${encodeURIComponent(token)}&conversacionId=${encodeURIComponent(conversacionId)}`
+                });
+            } catch {
+                // Si falla el marcado, no interrumpimos el chat.
+            }
+        }
+
         async function cargarChatPanel() {
             const container = document.getElementById('chatContainer');
 
@@ -368,6 +458,9 @@
         }
 
         function inicializarChatEventos() {
+            chatPopupUsuarioActual = null;
+            chatPopupConversacionActual = null;
+
             document.querySelectorAll('.chat-conversation-item').forEach(button => {
                 button.addEventListener('click', function () {
                     const userId = this.dataset.userId;
@@ -384,6 +477,15 @@
 
             const form = document.getElementById('chatEnviarForm');
             if (form) {
+                const currentUserInput = document.getElementById('chatPopupOtroUsuarioId');
+                const currentConversationInput = document.getElementById('chatPopupConversacionId');
+                if (currentUserInput?.value) {
+                    chatPopupUsuarioActual = currentUserInput.value.toString();
+                }
+                if (currentConversationInput?.value) {
+                    chatPopupConversacionActual = currentConversationInput.value.toString();
+                }
+
                 form.addEventListener('submit', async function (e) {
                     e.preventDefault();
 
@@ -406,7 +508,16 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        cargarConversacion(data.usuarioId);
+                        const textarea = form.querySelector('textarea[name="contenido"]');
+                        if (data.message) {
+                            appendChatMessage(data.message);
+                        }
+
+                        if (textarea) {
+                            textarea.value = '';
+                            textarea.focus();
+                        }
+
                         actualizarContadorMensajes();
                     }
                 });
@@ -455,6 +566,98 @@
         document.addEventListener('DOMContentLoaded', function () {
             actualizarContadorMensajes();
             setInterval(actualizarContadorMensajes, 15000);
+
+            const key = 'fitcontrol-temp-notifications';
+            const list = document.getElementById('notificationsList');
+            const clearBtn = document.getElementById('clearNotificationsBtn');
+
+            function leerNotificaciones() {
+                try {
+                    return JSON.parse(sessionStorage.getItem(key) || '[]');
+                } catch {
+                    return [];
+                }
+            }
+
+            function guardarNotificaciones(items) {
+                sessionStorage.setItem(key, JSON.stringify(items.slice(-50)));
+            }
+
+            function pintarNotificaciones() {
+                if (!list) return;
+                const items = leerNotificaciones().reverse();
+
+                if (items.length === 0) {
+                    list.innerHTML = '<div class="text-muted">No hay notificaciones temporales.</div>';
+                    return;
+                }
+
+                list.innerHTML = items.map(item => `
+                    <div class="notification-item border rounded-3 p-3">
+                        <div class="fw-bold text-capitalize">${item.title ?? item.type ?? 'Aviso'}</div>
+                        <div>${item.text ?? ''}</div>
+                        <small class="text-muted">${new Date(item.time).toLocaleString()}</small>
+                    </div>
+                `).join('');
+            }
+
+            document.addEventListener('fitcontrol:notify', (event) => {
+                const items = leerNotificaciones();
+                items.push(event.detail);
+                guardarNotificaciones(items);
+                pintarNotificaciones();
+            });
+
+            clearBtn?.addEventListener('click', () => {
+                guardarNotificaciones([]);
+                pintarNotificaciones();
+            });
+
+            pintarNotificaciones();
+
+            if (window.signalR) {
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl('/chatHub')
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on('chat:new-message', (payload) => {
+                    actualizarContadorMensajes();
+
+                    document.dispatchEvent(new CustomEvent('fitcontrol:notify', {
+                        detail: {
+                            type: 'info',
+                            title: 'Mensaje',
+                            text: 'Has recibido un nuevo mensaje.',
+                            time: new Date().toISOString()
+                        }
+                    }));
+
+                    const chatPanelAbierto = document.getElementById('chatOffcanvas');
+                    if (chatPanelAbierto?.classList.contains('show')) {
+                        const remitenteId = payload?.remitenteId?.toString();
+                        const conversacionId = payload?.conversacionId?.toString();
+
+                        if (chatPopupUsuarioActual && remitenteId && chatPopupUsuarioActual === remitenteId &&
+                            chatPopupConversacionActual && conversacionId && chatPopupConversacionActual === conversacionId) {
+                            appendChatMessage({
+                                contenido: payload?.contenido ?? '',
+                                fechaTexto: payload?.fechaTexto ?? '',
+                                esMio: false,
+                                remitenteNombre: payload?.remitenteNombre ?? 'Usuario',
+                                leido: payload?.leido === true
+                            });
+                            marcarConversacionLeida(conversacionId);
+                        } else {
+                            cargarChatPanel();
+                        }
+                    }
+                });
+
+                connection.start().catch(() => {
+                    // Si falla el realtime, el chat sigue funcionando por polling.
+                });
+            }
         });
     </script>
 </body>

@@ -108,37 +108,39 @@
         </form>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        
-        <div class="d-flex gap-2 flex-wrap">
-            <a asp-action="ExportReservasExcel"
+    @if (User.IsInRole("Administrador"))
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-action="ExportReservasExcel"
                    asp-route-claseId="@claseId"
                    asp-route-search="@ViewBag.Search"
                    asp-route-estado="@ViewBag.Estado"
                    class="btn btn-outline-success"
                    title="Exportar Excel">
-                <i class="bi bi-file-earmark-excel"></i>
-            </a>
+                    <i class="bi bi-file-earmark-excel"></i>
+                </a>
 
-            <a asp-action="ExportReservasCsv"
+                <a asp-action="ExportReservasCsv"
                    asp-route-claseId="@claseId"
                    asp-route-search="@ViewBag.Search"
                    asp-route-estado="@ViewBag.Estado"
                    class="btn btn-outline-secondary"
                    title="Exportar CSV">
-                <i class="bi bi-filetype-csv"></i>
-            </a>
+                    <i class="bi bi-filetype-csv"></i>
+                </a>
 
-            <a asp-action="ExportReservasPdf"
+                <a asp-action="ExportReservasPdf"
                    asp-route-claseId="@claseId"
                    asp-route-search="@ViewBag.Search"
                    asp-route-estado="@ViewBag.Estado"
                    class="btn btn-outline-danger"
                    title="Exportar PDF">
-                <i class="bi bi-file-earmark-pdf"></i>
-            </a>
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </a>
+            </div>
         </div>
-    </div>
+    }
 
     @if (!reservas.Any())
     {

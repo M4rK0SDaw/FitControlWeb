@@ -1,0 +1,52 @@
+@model FitControlWeb.ViewModels.Dashboard.EntrenadorPerfilViewModel
+
+@{
+    ViewData["Title"] = "Perfil del entrenador";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/CrudStyle.css" asp-append-version="true" />
+}
+
+<div class="page-card">
+    <div class="page-header flex-wrap gap-3">
+        <div>
+            <h2 class="page-title">Perfil del entrenador</h2>
+            <p class="text-muted mb-0">Informacion basica del monitor de la clase.</p>
+        </div>
+
+        <a asp-controller="Clases" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="info-box">
+                <span class="info-label">Nombre</span>
+                <p class="info-value mb-0">@Model.Nombre @Model.Apellidos</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="info-box">
+                <span class="info-label">Email</span>
+                <p class="info-value mb-0">@Model.Email</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="info-box">
+                <span class="info-label">Telefono</span>
+                <p class="info-value mb-0">@(string.IsNullOrWhiteSpace(Model.Telefono) ? "-" : Model.Telefono)</p>
+            </div>
+        </div>
+    </div>
+
+    @if (User.IsInRole("Cliente"))
+    {
+        <div class="mt-4">
+            <a asp-controller="Mensajes" asp-action="Conversacion" asp-route-usuarioId="@Model.Id" class="btn btn-orange">
+                <i class="bi bi-chat-dots me-1"></i> Enviar mensaje
+            </a>
+        </div>
+    }
+</div>

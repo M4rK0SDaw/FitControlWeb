@@ -379,22 +379,40 @@
             previewFoto.src = URL.createObjectURL(file);
         });
 
-        const preferenceStorageKey = 'fitcontrol-visual-preferences';
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) {
+                return parts.pop().split(';').shift();
+            }
+            return null;
+        }
+
         const tema = document.getElementById('preferenciaTema');
         const fondo = document.getElementById('preferenciaFondo');
         const color = document.getElementById('preferenciaColor');
         const fuente = document.getElementById('preferenciaFuente');
 
         function leerPreferencias() {
-            return JSON.parse(localStorage.getItem(preferenceStorageKey) || '{}');
+            return {
+                theme: getCookie('fitcontrol-theme') || 'light',
+                background: getCookie('fitcontrol-background') || 'soft',
+                accent: getCookie('fitcontrol-accent') || '#ff7a00',
+                fontScale: getCookie('fitcontrol-font-scale') || '1'
+            };
         }
 
         function guardarPreferencias(preferences) {
-            localStorage.setItem(preferenceStorageKey, JSON.stringify(preferences));
-            localStorage.setItem('fitcontrol-theme', preferences.theme);
-            localStorage.setItem('fitcontrol-accent', preferences.accent);
-            localStorage.setItem('fitcontrol-background', preferences.background);
-            localStorage.setItem('fitcontrol-font-scale', preferences.fontScale);
+            setCookie('fitcontrol-theme', preferences.theme, 3650);
+            setCookie('fitcontrol-accent', preferences.accent, 3650);
+            setCookie('fitcontrol-background', preferences.background, 3650);
+            setCookie('fitcontrol-font-scale', preferences.fontScale, 3650);
 
             document.body.classList.toggle('dark-mode', preferences.theme === 'dark');
             document.dispatchEvent(new CustomEvent('fitcontrol:preferences-changed', { detail: preferences }));
@@ -403,10 +421,10 @@
         function cargarPreferenciasEnFormulario() {
             const preferences = leerPreferencias();
 
-            tema.value = preferences.theme || localStorage.getItem('fitcontrol-theme') || 'light';
-            fondo.value = preferences.background || localStorage.getItem('fitcontrol-background') || 'soft';
-            color.value = preferences.accent || localStorage.getItem('fitcontrol-accent') || '#ff7a00';
-            fuente.value = preferences.fontScale || localStorage.getItem('fitcontrol-font-scale') || '1';
+            tema.value = preferences.theme;
+            fondo.value = preferences.background;
+            color.value = preferences.accent;
+            fuente.value = preferences.fontScale;
         }
 
         cargarPreferenciasEnFormulario();
@@ -433,12 +451,6 @@
         });
 
         document.getElementById('btnResetPreferencias').addEventListener('click', function () {
-            localStorage.removeItem(preferenceStorageKey);
-            localStorage.removeItem('fitcontrol-theme');
-            localStorage.removeItem('fitcontrol-accent');
-            localStorage.removeItem('fitcontrol-background');
-            localStorage.removeItem('fitcontrol-font-scale');
-
             guardarPreferencias({
                 theme: 'light',
                 background: 'soft',

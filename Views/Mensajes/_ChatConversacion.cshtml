@@ -52,6 +52,8 @@
     @Html.AntiForgeryToken()
 
     <input type="hidden" name="conversacionId" value="@Model.Id" />
+    <input type="hidden" id="chatPopupOtroUsuarioId" value="@(otroUsuario?.Id)" />
+    <input type="hidden" id="chatPopupConversacionId" value="@Model.Id" />
 
     <div class="d-flex gap-2">
         <textarea name="contenido"

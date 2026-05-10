@@ -205,12 +205,9 @@ public class ClasesController : Controller
         return RedirectLocalOrIndex(returnUrl);
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportCsv(string? search, int? entrenadorId, int? especialidadId, string? estado)
     {
-        if (User.IsInRole("Entrenador"))
-            entrenadorId = GetUsuarioId();
-
         var clases = await _claseService.GetFiltradasAsync(search ?? "", entrenadorId, especialidadId, estado, 1, int.MaxValue);
 
         var headers = new[] { "Clase", "Especialidad", "Fecha", "Hora inicio", "Hora fin", "Entrenador", "Capacidad máxima" };
@@ -232,12 +229,9 @@ public class ClasesController : Controller
         return File(bytes, "text/csv", "clases.csv");
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportExcel(string? search, int? entrenadorId, int? especialidadId, string? estado)
     {
-        if (User.IsInRole("Entrenador"))
-            entrenadorId = GetUsuarioId();
-
         var clases = await _claseService.GetFiltradasAsync(search ?? "", entrenadorId, especialidadId, estado, 1, int.MaxValue);
 
         var filters = GetFiltrosExport(search, entrenadorId, especialidadId, estado);
@@ -266,14 +260,11 @@ public class ClasesController : Controller
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "clases.xlsx");
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportPdf(string? search, int? entrenadorId, int? especialidadId, string? estado)
     {
         try
         {
-            if (User.IsInRole("Entrenador"))
-                entrenadorId = GetUsuarioId();
-
             var clases = await _claseService.GetFiltradasAsync(search ?? "", entrenadorId, especialidadId, estado, 1, int.MaxValue);
             var filters = GetFiltrosExport(search, entrenadorId, especialidadId, estado);
             var summary = GetResumenClases(clases);
@@ -303,6 +294,43 @@ public class ClasesController : Controller
             TempData["Error"] = $"Error al generar PDF: {ex.Message}";
             return RedirectToAction(nameof(Index), new { search, entrenadorId, especialidadId, estado });
         }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CalendarEvents(
+        string search = "",
+        int? entrenadorId = null,
+        int? especialidadId = null,
+        string? estado = null)
+    {
+        if (User.IsInRole("Entrenador"))
+            entrenadorId = GetUsuarioId();
+
+        if (User.IsInRole("Cliente") && string.IsNullOrWhiteSpace(estado))
+            estado = "Disponibles";
+
+        var clases = await _claseService.GetFiltradasAsync(
+            search,
+            entrenadorId,
+            especialidadId,
+            estado,
+            1,
+            2000);
+
+        var eventos = clases.Select(c => new
+        {
+            id = c.Id,
+            title = c.Nombre,
+            start = c.Fecha.ToDateTime(c.HoraInicio),
+            end = c.Fecha.ToDateTime(c.HoraFin),
+            extendedProps = new
+            {
+                entrenador = $"{c.Entrenador?.Nombre ?? ""} {c.Entrenador?.Apellidos ?? ""}".Trim(),
+                especialidad = c.Especialidad?.Nombre ?? ""
+            }
+        });
+
+        return Json(eventos);
     }
 
     private async Task CargarCombosAsync()

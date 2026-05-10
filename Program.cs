@@ -1,4 +1,5 @@
 using FitControlWeb.Data;
+using FitControlWeb.Hubs;
 using FitControlWeb.Services.Implementations;
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
@@ -109,6 +110,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// app.MapHub<ChatHub>("/chatHub");
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();

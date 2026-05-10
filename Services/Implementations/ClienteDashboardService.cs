@@ -23,14 +23,27 @@ public class ClienteDashboardService : IClienteDashboardService
         _profilePhotoService = profilePhotoService;
     }
 
-    public async Task<ClienteContratarSuscripcionViewModel> GetContratarSuscripcionAsync()
+    public async Task<ClienteContratarSuscripcionViewModel> GetContratarSuscripcionAsync(int usuarioId)
     {
+        var hoy = DateTime.Today;
+        var suscripcionActiva = await _context.Suscripciones
+            .Include(s => s.TipoSuscripcion)
+            .Where(s =>
+                s.UsuarioId == usuarioId &&
+                s.Activa == true &&
+                s.FechaFin >= hoy)
+            .OrderByDescending(s => s.FechaFin)
+            .FirstOrDefaultAsync();
+
         return new ClienteContratarSuscripcionViewModel
         {
             TiposDisponibles = await _context.TipoSuscripciones
                 .Where(t => t.Activo == true)
                 .OrderBy(t => t.Precio)
-                .ToListAsync()
+                .ToListAsync(),
+            TieneSuscripcionActiva = suscripcionActiva != null,
+            NombreSuscripcionActiva = suscripcionActiva?.TipoSuscripcion?.Nombre,
+            FechaFinSuscripcionActiva = suscripcionActiva?.FechaFin
         };
     }
 
@@ -263,6 +276,7 @@ public class ClienteDashboardService : IClienteDashboardService
             factura.Id,
             "Suscripcion activada y pago registrado correctamente.");
     }
+
 
     public async Task<ClienteDashboardViewModel?> GetDashboardAsync(int usuarioId)
     {

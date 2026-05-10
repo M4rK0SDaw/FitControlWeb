@@ -419,8 +419,21 @@ a {
     z-index: 99998 !important;
 }
 
-.offcanvas-backdrop {
-    z-index: 99997 !important;
+.chat-offcanvas {
+    z-index: 1060 !important;
+}
+
+#notificationsOffcanvas {
+    z-index: 1062;
+}
+
+.notifications-offcanvas {
+    z-index: 1080 !important;
+}
+
+.notification-item {
+    background: #f8fafc;
+    border-color: #e5e7eb !important;
 }
 
 .chat-popup-header {
@@ -674,6 +687,12 @@ body.dark-mode .table-dark {
 
 body.dark-mode .table-modern tbody tr:hover {
     background: rgba(255,122,0,.12);
+}
+
+body.dark-mode .notification-item {
+    background: #111827;
+    border-color: rgba(255,255,255,.14) !important;
+    color: #e5e7eb;
 }
 
 .sidebar-backdrop {

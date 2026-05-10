@@ -112,7 +112,7 @@ public class ReservasController : Controller
         return View(reservas);
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasCsv(int claseId, string? search, string? estado)
     {
         var forbid = await ValidarAccesoClaseAsync(claseId);
@@ -126,7 +126,7 @@ public class ReservasController : Controller
         return File(bytes, "text/csv", "reservas-clase.csv");
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasExcel(int claseId, string? search, string? estado)
     {
         var forbid = await ValidarAccesoClaseAsync(claseId);
@@ -152,7 +152,7 @@ public class ReservasController : Controller
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "reservas-clase.xlsx");
     }
 
-    [Authorize(Roles = "Administrador,Entrenador")]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasPdf(int claseId, string? search, string? estado)
     {
         try

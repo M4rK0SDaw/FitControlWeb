@@ -8,7 +8,7 @@ public interface IClienteDashboardService
 {
     Task<ClienteDashboardViewModel?> GetDashboardAsync(int usuarioId);
     Task<ClientePerfilViewModel?> GetPerfilAsync(int usuarioId);
-    Task<ClienteContratarSuscripcionViewModel> GetContratarSuscripcionAsync();
+    Task<ClienteContratarSuscripcionViewModel> GetContratarSuscripcionAsync(int usuarioId);
     Task<ServiceResult<string>> CrearCheckoutSuscripcionAsync(int usuarioId, int tipoSuscripcionId, string successUrl, string cancelUrl);
     Task<ServiceResult<int>> ConfirmarCheckoutSuscripcionAsync(int usuarioId, string sessionId);
     Task<ServiceResult> UpdatePerfilAsync(int usuarioId, ClientePerfilViewModel model, IFormFile? foto);
