@@ -1,28 +1,7 @@
-﻿@model IEnumerable<FitControlWeb.Models.Entities.Reserva>
+@model FitControlWeb.ViewModels.Reservas.ReservaPorClaseViewModel
 
 @{
     ViewData["Title"] = "Reservas";
-
-    var reservas = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.Reserva>();
-
-    int currentPage = ViewBag.CurrentPage ?? 1;
-    int totalPages = ViewBag.TotalPages ?? 1;
-    int pageSize = ViewBag.PageSize ?? 10;
-
-    int claseId = ViewBag.ClaseId ?? 0;
-    int totalReservas = ViewBag.TotalReservas ?? 0;
-
-    int plazasOcupadas = ViewBag.PlazasOcupadas ?? 0;
-    int capacidadMaxima = ViewBag.CapacidadMaxima ?? 0;
-    int plazasCanceladas = ViewBag.PlazasCanceladas ?? 0;
-
-    string nombreClase = ViewBag.ClaseNombre ?? "Clase";
-    DateTime? fechaClase = ViewBag.ClaseFecha;
-    var horaInicio = ViewBag.ClaseHoraInicio;
-    var horaFin = ViewBag.ClaseHoraFin;
-
-    int startPage = Math.Max(1, currentPage - 2);
-    int endPage = Math.Min(totalPages, currentPage + 2);
 }
 
 @section Styles {
@@ -30,21 +9,20 @@
 }
 
 <div class="page-card">
-
     <div class="page-header flex-wrap gap-3">
         <div>
             <h2 class="page-title">Reservas por clase</h2>
             <p class="text-muted mb-0">
-                @nombreClase -
-                @(fechaClase?.ToString("dd/MM/yyyy")) -
-                @horaInicio a @horaFin
+                @Model.NombreClase -
+                @(Model.FechaClase?.ToString("dd/MM/yyyy")) -
+                @Model.HoraInicio a @Model.HoraFin
             </p>
         </div>
 
         <a asp-controller="Clases"
-               asp-action="Details"
-               asp-route-id="@claseId"
-               class="btn btn-outline-secondary">
+           asp-action="Details"
+           asp-route-id="@Model.ClaseId"
+           class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
     </div>
@@ -53,34 +31,34 @@
         <div class="col-md-4">
             <div class="info-box">
                 <span class="info-label">Plazas ocupadas</span>
-                <p class="info-value mb-0">@plazasOcupadas / @capacidadMaxima</p>
+                <p class="info-value mb-0">@Model.PlazasOcupadas / @Model.CapacidadMaxima</p>
             </div>
         </div>
 
         <div class="col-md-4">
             <div class="info-box">
                 <span class="info-label">Reservas totales</span>
-                <p class="info-value mb-0">@totalReservas</p>
+                <p class="info-value mb-0">@Model.TotalReservas</p>
             </div>
         </div>
 
         <div class="col-md-4">
             <div class="info-box">
                 <span class="info-label">Canceladas</span>
-                <p class="info-value mb-0">@plazasCanceladas</p>
+                <p class="info-value mb-0">@Model.PlazasCanceladas</p>
             </div>
         </div>
     </div>
 
     <div class="filter-box mb-4">
         <form method="get" class="row g-3 align-items-end">
-            <input type="hidden" name="claseId" value="@claseId" />
+            <input type="hidden" name="claseId" value="@Model.ClaseId" />
 
             <div class="col-md-4">
                 <label class="form-label">Buscar cliente</label>
                 <input type="text"
                        name="search"
-                       value="@ViewBag.Search"
+                       value="@Model.Search"
                        class="form-control"
                        placeholder="Nombre, apellido o email..." />
             </div>
@@ -89,8 +67,8 @@
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
                     <option value="">Todos</option>
-                    <option value="Activa" selected="@(ViewBag.Estado == "Activa")">Activas</option>
-                    <option value="Cancelada" selected="@(ViewBag.Estado == "Cancelada")">Canceladas</option>
+                    <option value="Activa" selected="@(Model.Estado == "Activa")">Activas</option>
+                    <option value="Cancelada" selected="@(Model.Estado == "Cancelada")">Canceladas</option>
                 </select>
             </div>
 
@@ -100,8 +78,8 @@
                 </button>
 
                 <a asp-action="PorClase"
-                       asp-route-claseId="@claseId"
-                       class="btn btn-outline-secondary">
+                   asp-route-claseId="@Model.ClaseId"
+                   class="btn btn-outline-secondary">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -113,27 +91,27 @@
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div class="d-flex gap-2 flex-wrap">
                 <a asp-action="ExportReservasExcel"
-                   asp-route-claseId="@claseId"
-                   asp-route-search="@ViewBag.Search"
-                   asp-route-estado="@ViewBag.Estado"
+                   asp-route-claseId="@Model.ClaseId"
+                   asp-route-search="@Model.Search"
+                   asp-route-estado="@Model.Estado"
                    class="btn btn-outline-success"
                    title="Exportar Excel">
                     <i class="bi bi-file-earmark-excel"></i>
                 </a>
 
                 <a asp-action="ExportReservasCsv"
-                   asp-route-claseId="@claseId"
-                   asp-route-search="@ViewBag.Search"
-                   asp-route-estado="@ViewBag.Estado"
+                   asp-route-claseId="@Model.ClaseId"
+                   asp-route-search="@Model.Search"
+                   asp-route-estado="@Model.Estado"
                    class="btn btn-outline-secondary"
                    title="Exportar CSV">
                     <i class="bi bi-filetype-csv"></i>
                 </a>
 
                 <a asp-action="ExportReservasPdf"
-                   asp-route-claseId="@claseId"
-                   asp-route-search="@ViewBag.Search"
-                   asp-route-estado="@ViewBag.Estado"
+                   asp-route-claseId="@Model.ClaseId"
+                   asp-route-search="@Model.Search"
+                   asp-route-estado="@Model.Estado"
                    class="btn btn-outline-danger"
                    title="Exportar PDF">
                     <i class="bi bi-file-earmark-pdf"></i>
@@ -142,7 +120,7 @@
         </div>
     }
 
-    @if (!reservas.Any())
+    @if (!Model.Reservas.Any())
     {
         <div class="alert alert-info">
             No hay reservas con los filtros seleccionados.
@@ -163,7 +141,7 @@
                 </thead>
 
                 <tbody>
-                    @foreach (var r in reservas)
+                    @foreach (var r in Model.Reservas)
                     {
                         <tr>
                             <td class="fw-semibold">
@@ -173,33 +151,30 @@
                             </td>
 
                             <td>@(r.Usuario?.Email ?? "Sin email")</td>
-
                             <td>@r.FechaReserva?.ToString("dd/MM/yyyy HH:mm")</td>
-
                             <td>
                                 <span class="badge @(r.Activo == true ? "bg-success" : "bg-danger")">
                                     @(r.EstadoReserva?.Nombre ?? (r.Activo == true ? "Activa" : "Cancelada"))
                                 </span>
                             </td>
-
                             <td class="text-end">
                                 <div class="btn-group">
                                     @if (r.Usuario != null)
                                     {
                                         <a asp-controller="Usuarios"
-                                               asp-action="Details"
-                                               asp-route-id="@r.UsuarioId"
-                                               class="btn btn-sm btn-outline-dark"
-                                               title="Ver usuario">
+                                           asp-action="Details"
+                                           asp-route-id="@r.UsuarioId"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver usuario">
                                             <i class="bi bi-person"></i>
                                         </a>
                                     }
 
                                     <a asp-controller="Clases"
-                                           asp-action="Details"
-                                           asp-route-id="@r.ClaseId"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="Ver clase">
+                                       asp-action="Details"
+                                       asp-route-id="@r.ClaseId"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Ver clase">
                                         <i class="bi bi-calendar-event"></i>
                                     </a>
 
@@ -212,7 +187,6 @@
                                               class="d-inline cancel-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-danger btn-cancel-reserva"
                                                     title="Cancelar reserva">
@@ -229,7 +203,6 @@
                                               class="d-inline reactivate-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-success btn-reactivar-reserva"
                                                     title="Reactivar reserva">
@@ -245,74 +218,74 @@
             </table>
         </div>
 
-        @if (totalPages > 1)
+        @if (Model.TotalPages > 1)
         {
             <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
                 <span class="text-muted small">
-                    Página @currentPage de @totalPages
+                    Pagina @Model.CurrentPage de @Model.TotalPages
                 </span>
 
                 <nav>
                     <ul class="pagination mb-0">
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="PorClase"
-                                   asp-route-claseId="@claseId"
-                                   asp-route-page="1"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="PorClase"
+                               asp-route-claseId="@Model.ClaseId"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="PorClase"
-                                   asp-route-claseId="@claseId"
-                                   asp-route-page="@(currentPage - 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="PorClase"
+                               asp-route-claseId="@Model.ClaseId"
+                               asp-route-page="@(Model.CurrentPage - 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
 
-                        @for (int i = startPage; i <= endPage; i++)
+                        @for (int i = Model.StartPage; i <= Model.EndPage; i++)
                         {
-                            <li class="page-item @(i == currentPage ? "active" : "")">
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
                                 <a class="page-link"
-                                       asp-action="PorClase"
-                                       asp-route-claseId="@claseId"
-                                       asp-route-page="@i"
-                                       asp-route-pageSize="@pageSize"
-                                       asp-route-search="@ViewBag.Search"
-                                       asp-route-estado="@ViewBag.Estado">
+                                   asp-action="PorClase"
+                                   asp-route-claseId="@Model.ClaseId"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@Model.PageSize"
+                                   asp-route-search="@Model.Search"
+                                   asp-route-estado="@Model.Estado">
                                     @i
                                 </a>
                             </li>
                         }
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="PorClase"
-                                   asp-route-claseId="@claseId"
-                                   asp-route-page="@(currentPage + 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="PorClase"
+                               asp-route-claseId="@Model.ClaseId"
+                               asp-route-page="@(Model.CurrentPage + 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="PorClase"
-                                   asp-route-claseId="@claseId"
-                                   asp-route-page="@totalPages"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="PorClase"
+                               asp-route-claseId="@Model.ClaseId"
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>
@@ -331,12 +304,12 @@
 
                 Swal.fire({
                     title: '¿Cancelar reserva?',
-                    text: 'La reserva quedará cancelada.',
+                    text: 'La reserva quedara cancelada.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, cancelar',
+                    confirmButtonText: 'Si, cancelar',
                     cancelButtonText: 'Volver'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -352,12 +325,12 @@
 
                 Swal.fire({
                     title: '¿Reactivar reserva?',
-                    text: 'El cliente volverá a estar inscrito en la clase si hay plazas disponibles.',
+                    text: 'El cliente volvera a estar inscrito en la clase si hay plazas disponibles.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#198754',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, reactivar',
+                    confirmButtonText: 'Si, reactivar',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {

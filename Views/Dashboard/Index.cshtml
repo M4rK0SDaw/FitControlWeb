@@ -91,7 +91,9 @@
                 <div class="col-lg-6">
                     <div class="info-box h-100">
                         <h5 class="fw-bold mb-3">Reservas</h5>
-                        <canvas id="reservasChart" height="140"></canvas>
+                        <div class="mx-auto" style="max-width: 260px;">
+                            <canvas id="reservasChart" height="140"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -723,6 +725,8 @@
         },
         options: {
         responsive: true,
+        maintainAspectRatio: true,
+        cutout: '62%',
         plugins: { legend: { position: 'bottom' } }
         }
         });

@@ -1,22 +1,8 @@
-﻿@model IEnumerable<FitControlWeb.Models.Entities.Factura>
+@model FitControlWeb.ViewModels.Facturas.FacturaIndexViewModel
 @using FitControlWeb.ViewModels.Shared
 
 @{
     ViewData["Title"] = "Facturas";
-
-    var facturas = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.Factura>();
-
-    int currentPage = ViewBag.CurrentPage ?? 1;
-    int totalPages = ViewBag.TotalPages ?? 1;
-    int pageSize = ViewBag.PageSize ?? 10;
-    int totalFacturas = ViewBag.TotalFacturas ?? 0;
-
-    int pagadasPagina = ViewBag.TotalPagadas ?? 0;
-    int pendientesPagina = ViewBag.TotalPendientes ?? 0;
-    decimal importePagina = ViewBag.ImportePagina ?? 0m;
-
-    int startPage = Math.Max(1, currentPage - 2);
-    int endPage = Math.Min(totalPages, currentPage + 2);
 }
 
 @section Styles {
@@ -36,28 +22,28 @@
         <div class="col-md-3">
             <div class="info-box">
                 <span class="info-label">Facturas encontradas</span>
-                <p class="info-value mb-0">@totalFacturas</p>
+                <p class="info-value mb-0">@Model.TotalFacturas</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Pagadas en página</span>
-                <p class="info-value mb-0">@pagadasPagina</p>
+                <span class="info-label">Pagadas en pagina</span>
+                <p class="info-value mb-0">@Model.TotalPagadas</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Pendientes en página</span>
-                <p class="info-value mb-0">@pendientesPagina</p>
+                <span class="info-label">Pendientes en pagina</span>
+                <p class="info-value mb-0">@Model.TotalPendientes</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Importe página</span>
-                <p class="info-value mb-0">@importePagina.ToString("0.00") €</p>
+                <span class="info-label">Importe pagina</span>
+                <p class="info-value mb-0">@Model.ImportePagina.ToString("0.00") EUR</p>
             </div>
         </div>
     </div>
@@ -68,7 +54,7 @@
                 <label class="form-label">Buscar</label>
                 <input type="text"
                        name="search"
-                       value="@ViewBag.Search"
+                       value="@Model.Search"
                        class="form-control"
                        placeholder="Nº factura, cliente o email..." />
             </div>
@@ -77,17 +63,17 @@
                 <label class="form-label">Estado</label>
                 <select name="pagada" class="form-select">
                     <option value="">Todas</option>
-                    <option value="true" selected="@(ViewBag.Pagada?.ToString() == "True")">Pagadas</option>
-                    <option value="false" selected="@(ViewBag.Pagada?.ToString() == "False")">Pendientes</option>
+                    <option value="true" selected="@(Model.Pagada == true)">Pagadas</option>
+                    <option value="false" selected="@(Model.Pagada == false)">Pendientes</option>
                 </select>
             </div>
 
             <div class="col-md-2">
                 <label class="form-label">Ver</label>
                 <select name="pageSize" class="form-select">
-                    <option value="10" selected="@(pageSize == 10)">10</option>
-                    <option value="25" selected="@(pageSize == 25)">25</option>
-                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
                 </select>
             </div>
 
@@ -110,17 +96,17 @@
                 CsvAction = "ExportCsv",
                 PdfAction = "ExportPdf",
                 RouteValues = new Dictionary<string, string?>
-        {
-            { "search", ViewBag.Search?.ToString() },
-            { "pagada", ViewBag.Pagada?.ToString() }
-        }
+                {
+                    { "search", Model.Search },
+                    { "pagada", Model.Pagada?.ToString() }
+                }
             };
         }
 
         <partial name="_ExportButtons" model="exportModel" />
     </div>
 
-    @if (!facturas.Any())
+    @if (!Model.Facturas.Any())
     {
         <div class="alert alert-info">
             No hay facturas con los filtros seleccionados.
@@ -143,8 +129,13 @@
                 </thead>
 
                 <tbody>
-                    @foreach (var f in facturas)
+                    @foreach (var f in Model.Facturas)
                     {
+                        var concepto = f.FacturaDetalles?
+                            .Where(d => !string.IsNullOrWhiteSpace(d.Concepto))
+                            .Select(d => d.Concepto)
+                            .FirstOrDefault();
+
                         <tr>
                             <td class="fw-semibold">@f.NumeroFactura</td>
 
@@ -157,18 +148,12 @@
                             </td>
 
                             <td>
-                                @{
-                                    var concepto = f.FacturaDetalles?
-                                        .Where(d => !string.IsNullOrWhiteSpace(d.Concepto))
-                                        .Select(d => d.Concepto)
-                                        .FirstOrDefault();
-                                }
                                 @(string.IsNullOrWhiteSpace(concepto) ? "Sin concepto" : concepto)
                             </td>
 
                             <td>@f.FechaEmision?.ToString("dd/MM/yyyy HH:mm")</td>
 
-                            <td class="fw-bold">@f.Total.ToString("0.00") €</td>
+                            <td class="fw-bold">@f.Total.ToString("0.00") EUR</td>
 
                             <td>
                                 @if (f.Pagada == true)
@@ -184,15 +169,15 @@
                             <td class="text-end">
                                 <div class="btn-group">
                                     <a asp-action="Details"
-                                           asp-route-id="@f.Id"
-                                           class="btn btn-sm btn-outline-dark"
-                                           title="Ver factura">
+                                       asp-route-id="@f.Id"
+                                       class="btn btn-sm btn-outline-dark"
+                                       title="Ver factura">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
                                     @if (f.Pagada != true)
                                     {
-                                        <form asp-action="SimularPagoStripe"
+                                        <form asp-action="PagarConStripe"
                                               asp-route-id="@f.Id"
                                               method="post"
                                               class="d-inline form-stripe">
@@ -200,7 +185,7 @@
 
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-success btn-stripe"
-                                                    title="Simular pago Stripe">
+                                                    title="Pagar con Stripe">
                                                 <i class="bi bi-credit-card"></i>
                                             </button>
                                         </form>
@@ -213,75 +198,73 @@
             </table>
         </div>
 
-        @if (totalPages > 1)
+        @if (Model.TotalPages > 1)
         {
             <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
 
                 <span class="text-muted small">
-                    Página @currentPage de @totalPages
+                    Pagina @Model.CurrentPage de @Model.TotalPages
                 </span>
 
                 <nav>
                     <ul class="pagination mb-0">
-
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="1"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-pagada="@ViewBag.Pagada">
+                               asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-pagada="@Model.Pagada">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@(currentPage - 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-pagada="@ViewBag.Pagada">
+                               asp-action="Index"
+                               asp-route-page="@(Model.CurrentPage - 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-pagada="@Model.Pagada">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
 
-                        @for (int i = startPage; i <= endPage; i++)
+                        @for (int i = Model.StartPage; i <= Model.EndPage; i++)
                         {
-                            <li class="page-item @(i == currentPage ? "active" : "")">
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
                                 <a class="page-link"
-                                       asp-action="Index"
-                                       asp-route-page="@i"
-                                       asp-route-pageSize="@pageSize"
-                                       asp-route-search="@ViewBag.Search"
-                                       asp-route-pagada="@ViewBag.Pagada">
+                                   asp-action="Index"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@Model.PageSize"
+                                   asp-route-search="@Model.Search"
+                                   asp-route-pagada="@Model.Pagada">
                                     @i
                                 </a>
                             </li>
                         }
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@(currentPage + 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-pagada="@ViewBag.Pagada">
+                               asp-action="Index"
+                               asp-route-page="@(Model.CurrentPage + 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-pagada="@Model.Pagada">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@totalPages"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-pagada="@ViewBag.Pagada">
+                               asp-action="Index"
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-pagada="@Model.Pagada">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>
-
                     </ul>
                 </nav>
             </div>
@@ -297,12 +280,12 @@
 
                 Swal.fire({
                     title: 'Pago seguro con Stripe',
-                    text: 'Se simulará un pago correcto y se marcará la factura como pagada.',
+                    text: 'Se abrira el flujo de pago de la factura.',
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Simular pago',
+                    confirmButtonText: 'Continuar',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {

@@ -1,23 +1,7 @@
-﻿@model IEnumerable<FitControlWeb.ViewModels.UsuarioListViewModel>
-@using FitControlWeb.ViewModels.Shared
+@model FitControlWeb.ViewModels.Usuarios.UsuarioIndexViewModel
 
 @{
     ViewData["Title"] = "Usuarios";
-
-    var usuarios = Model?.ToList() ?? new List<FitControlWeb.ViewModels.UsuarioListViewModel>();
-
-    int currentPage = ViewBag.CurrentPage ?? 1;
-    int totalPages = ViewBag.TotalPages ?? 1;
-    int pageSize = ViewBag.PageSize ?? 10;
-    int totalUsuarios = ViewBag.TotalUsuarios ?? 0;
-    
-    int usuariosActivos = ViewBag.UsuariosActivos ?? 0;
-    int usuariosInactivos = ViewBag.UsuariosInactivos ?? 0;
-    int totalClientes = ViewBag.TotalClientes ?? 0;
-
-
-    int startPage = Math.Max(1, currentPage - 2);
-    int endPage = Math.Min(totalPages, currentPage + 2);
 }
 
 @section Styles {
@@ -25,12 +9,10 @@
 }
 
 <div class="page-card">
-
-    <!-- HEADER -->
     <div class="page-header flex-wrap gap-3">
         <div>
             <h2 class="page-title">Usuarios</h2>
-            <p class="text-muted mb-0">Gestión de usuarios del sistema</p>
+            <p class="text-muted mb-0">Gestion de usuarios del sistema</p>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
@@ -41,71 +23,105 @@
     </div>
 
     <div class="row g-3 mb-4">
-
-        <div class="col-md-3">
+        <div class="col-md-6 col-xl-3">
             <div class="info-box d-flex align-items-center gap-3">
                 <div class="kpi-icon bg-primary">
                     <i class="bi bi-people"></i>
                 </div>
                 <div>
                     <span class="info-label">Total usuarios</span>
-                    <p class="info-value mb-0">@totalUsuarios</p>
+                    <p class="info-value mb-0">@Model.TotalUsuarios</p>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-6 col-xl-3">
             <div class="info-box d-flex align-items-center gap-3">
                 <div class="kpi-icon bg-success">
                     <i class="bi bi-check-circle"></i>
                 </div>
                 <div>
                     <span class="info-label">Activos</span>
-                    <p class="info-value mb-0">@usuariosActivos</p>
+                    <p class="info-value mb-0">@Model.UsuariosActivos</p>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-6 col-xl-3">
             <div class="info-box d-flex align-items-center gap-3">
                 <div class="kpi-icon bg-danger">
                     <i class="bi bi-x-circle"></i>
                 </div>
                 <div>
                     <span class="info-label">Inactivos</span>
-                    <p class="info-value mb-0">@usuariosInactivos</p>
+                    <p class="info-value mb-0">@Model.UsuariosInactivos</p>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-6 col-xl-3">
             <div class="info-box d-flex align-items-center gap-3">
                 <div class="kpi-icon bg-warning">
                     <i class="bi bi-person-badge"></i>
                 </div>
                 <div>
                     <span class="info-label">Clientes</span>
-                    <p class="info-value mb-0">@totalClientes</p>
+                    <p class="info-value mb-0">@Model.TotalClientes</p>
                 </div>
             </div>
         </div>
 
+        <div class="col-md-6 col-xl-4">
+            <div class="info-box d-flex align-items-center gap-3">
+                <div class="kpi-icon bg-info">
+                    <i class="bi bi-person-workspace"></i>
+                </div>
+                <div>
+                    <span class="info-label">Entrenadores</span>
+                    <p class="info-value mb-0">@Model.TotalEntrenadores</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="info-box d-flex align-items-center gap-3">
+                <div class="kpi-icon bg-dark">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                    <span class="info-label">Administradores</span>
+                    <p class="info-value mb-0">@Model.TotalAdministradores</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12 col-xl-4">
+            <div class="info-box d-flex align-items-center gap-3">
+                <div class="kpi-icon bg-secondary">
+                    <i class="bi bi-calendar-plus"></i>
+                </div>
+                <div>
+                    <span class="info-label">Nuevos este mes</span>
+                    <p class="info-value mb-0">@Model.NuevosEsteMes</p>
+                </div>
+            </div>
+        </div>
     </div>
+
     <div class="filter-box mb-4">
         <form method="get" class="row g-3 align-items-end">
-
             <div class="col-md-4">
                 <label class="form-label">Buscar</label>
                 <input type="text"
                        name="search"
-                       value="@ViewBag.Search"
+                       value="@Model.Search"
                        class="form-control"
                        placeholder="Nombre, email..." />
             </div>
 
             <div class="col-md-3">
                 <label class="form-label">Rol</label>
-                <select name="rolId" class="form-select" asp-items="ViewBag.Roles">
+                <select name="rolId" class="form-select" asp-items="Model.Roles">
                     <option value="">Todos</option>
                 </select>
             </div>
@@ -114,17 +130,17 @@
                 <label class="form-label">Estado</label>
                 <select name="activo" class="form-select">
                     <option value="">Todos</option>
-                    <option value="true" selected="@(ViewBag.Activo?.ToString() == "True")">Activos</option>
-                    <option value="false" selected="@(ViewBag.Activo?.ToString() == "False")">Inactivos</option>
+                    <option value="true" selected="@(Model.Activo == true)">Activos</option>
+                    <option value="false" selected="@(Model.Activo == false)">Inactivos</option>
                 </select>
             </div>
 
             <div class="col-md-2">
                 <label class="form-label">Ver</label>
                 <select name="pageSize" class="form-select">
-                    <option value="10" selected="@(pageSize == 10)">10</option>
-                    <option value="25" selected="@(pageSize == 25)">25</option>
-                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
                 </select>
             </div>
 
@@ -133,30 +149,13 @@
                     <i class="bi bi-search"></i>
                 </button>
             </div>
-
         </form>
-        <br />
-        @{
-            var exportModel = new ExportButtonsViewModel
-            {
-                Controller = "Usuarios",
-                ExcelAction = "ExportExcel",
-                CsvAction = "ExportCsv",
-                PdfAction = "ExportPdf",
-                RouteValues = new Dictionary<string, string?>
-        {
-            { "search", ViewBag.Search?.ToString() },
-            { "rolId", ViewBag.RolId?.ToString() },
-            { "activo", ViewBag.Activo?.ToString() }
-        }
-            };
-        }
 
-        <partial name="_ExportButtons" model="exportModel" />
+        <br />
+        <partial name="_ExportButtons" model="Model.ExportButtons" />
     </div>
 
-    
-    @if (!usuarios.Any())
+    @if (!Model.Usuarios.Any())
     {
         <div class="alert alert-info">
             No hay usuarios con los filtros seleccionados.
@@ -177,72 +176,53 @@
                 </thead>
 
                 <tbody>
-                    @foreach (var u in usuarios)
+                    @foreach (var usuario in Model.Usuarios)
                     {
                         <tr>
-                            <td>@u.Nombre @u.Apellidos</td>
-                            <td>@u.Email</td>
-                            <td>@u.Rol</td>
-
+                            <td>@usuario.Nombre @usuario.Apellidos</td>
+                            <td>@usuario.Email</td>
+                            <td>@usuario.Rol</td>
                             <td>
-                                <span class="badge @(u.Activo ? "bg-success" : "bg-danger")">
-                                    @(u.Activo ? "Activo" : "Inactivo")
+                                <span class="badge @(usuario.Activo ? "bg-success" : "bg-danger")">
+                                    @(usuario.Activo ? "Activo" : "Inactivo")
                                 </span>
                             </td>
-
                             <td class="text-end">
                                 <div class="btn-group">
-
-                                    <!-- VER -->
-                                    <a asp-action="Details"
-                                           asp-route-id="@u.Id"
-                                           class="btn btn-sm btn-outline-dark">
+                                    <a asp-action="Details" asp-route-id="@usuario.Id" class="btn btn-sm btn-outline-dark">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
-                                    <!-- EDIT -->
-                                    <a asp-action="Edit"
-                                           asp-route-id="@u.Id"
-                                           class="btn btn-sm btn-outline-primary">
+                                    <a asp-action="Edit" asp-route-id="@usuario.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
 
-                                    <!-- DELETE / REACTIVAR -->
-                                    @if (u.Activo)
+                                    @if (usuario.Activo)
                                     {
                                         <form asp-action="Delete"
-                                              asp-route-id="@u.Id"
+                                              asp-route-id="@usuario.Id"
                                               method="post"
                                               class="d-inline form-delete">
-
                                             @Html.AntiForgeryToken()
-
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-danger btn-delete">
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
-
                                             <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
                                         </form>
                                     }
                                     else
                                     {
                                         <form asp-action="Reactivar"
-                                              asp-route-id="@u.Id"
+                                              asp-route-id="@usuario.Id"
                                               method="post"
                                               class="d-inline form-reactivar">
-
                                             @Html.AntiForgeryToken()
-
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-success btn-reactivar">
+                                            <button type="button" class="btn btn-sm btn-outline-success btn-reactivar">
                                                 <i class="bi bi-arrow-clockwise"></i>
                                             </button>
-
                                             <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
                                         </form>
                                     }
-
                                 </div>
                             </td>
                         </tr>
@@ -251,80 +231,77 @@
             </table>
         </div>
 
-        <!-- PAGINACIÓN -->
-        @if (totalPages > 1)
+        @if (Model.TotalPages > 1)
         {
             <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
-
                 <span class="text-muted small">
-                    Página @currentPage de @totalPages
+                    Pagina @Model.CurrentPage de @Model.TotalPages
                 </span>
 
                 <nav>
                     <ul class="pagination mb-0">
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
                                asp-action="Index"
                                asp-route-page="1"
-                               asp-route-pageSize="@pageSize"
-                               asp-route-search="@ViewBag.Search"
-                               asp-route-rolId="@ViewBag.RolId"
-                               asp-route-activo="@ViewBag.Activo">
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-rolId="@Model.RolId"
+                               asp-route-activo="@Model.Activo">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
                                asp-action="Index"
-                               asp-route-page="@(currentPage - 1)"
-                               asp-route-pageSize="@pageSize"
-                               asp-route-search="@ViewBag.Search"
-                               asp-route-rolId="@ViewBag.RolId"
-                               asp-route-activo="@ViewBag.Activo">
+                               asp-route-page="@(Model.CurrentPage - 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-rolId="@Model.RolId"
+                               asp-route-activo="@Model.Activo">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
 
-                        @for (int i = startPage; i <= endPage; i++)
+                        @for (int i = Model.StartPage; i <= Model.EndPage; i++)
                         {
-                            <li class="page-item @(i == currentPage ? "active" : "")">
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
                                 <a class="page-link"
-                                       asp-action="Index"
-                                       asp-route-page="@i"
-                                       asp-route-pageSize="@pageSize"
-                                       asp-route-search="@ViewBag.Search"
-                                       asp-route-rolId="@ViewBag.RolId"
-                                       asp-route-activo="@ViewBag.Activo">
+                                   asp-action="Index"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@Model.PageSize"
+                                   asp-route-search="@Model.Search"
+                                   asp-route-rolId="@Model.RolId"
+                                   asp-route-activo="@Model.Activo">
                                     @i
                                 </a>
                             </li>
                         }
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
                                asp-action="Index"
-                               asp-route-page="@(currentPage + 1)"
-                               asp-route-pageSize="@pageSize"
-                               asp-route-search="@ViewBag.Search"
-                               asp-route-rolId="@ViewBag.RolId"
-                               asp-route-activo="@ViewBag.Activo">
+                               asp-route-page="@(Model.CurrentPage + 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-rolId="@Model.RolId"
+                               asp-route-activo="@Model.Activo">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
                                asp-action="Index"
-                               asp-route-page="@totalPages"
-                               asp-route-pageSize="@pageSize"
-                               asp-route-search="@ViewBag.Search"
-                               asp-route-rolId="@ViewBag.RolId"
-                               asp-route-activo="@ViewBag.Activo">
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-rolId="@Model.RolId"
+                               asp-route-activo="@Model.Activo">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>
-
                     </ul>
                 </nav>
             </div>
@@ -340,12 +317,12 @@
 
                 Swal.fire({
                     title: '¿Dar de baja usuario?',
-                    text: 'El usuario quedará inactivo.',
+                    text: 'El usuario quedara inactivo.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí',
+                    confirmButtonText: 'Si',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) form.submit();
@@ -363,7 +340,7 @@
                     showCancelButton: true,
                     confirmButtonColor: '#198754',
                     cancelButtonText: 'Cancelar',
-                    confirmButtonText: 'Sí'
+                    confirmButtonText: 'Si'
                 }).then((result) => {
                     if (result.isConfirmed) form.submit();
                 });

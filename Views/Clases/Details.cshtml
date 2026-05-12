@@ -93,22 +93,34 @@
                                 : "Sin entrenador")
                         </p>
 
-                        @if (Model.Entrenador != null && User.IsInRole("Cliente"))
+                        @if (Model.Entrenador != null)
                         {
                             <div class="d-flex gap-2 flex-wrap">
-                                <a asp-controller="EntrenadorDashboard"
-                                   asp-action="Publico"
-                                   asp-route-id="@Model.Entrenador.Id"
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-person-badge"></i> Ver perfil
-                                </a>
+                                @if (User.IsInRole("Cliente"))
+                                {
+                                    <a asp-controller="EntrenadorDashboard"
+                                       asp-action="Publico"
+                                       asp-route-id="@Model.Entrenador.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-person-badge"></i> Ver perfil
+                                    </a>
 
-                                <a asp-controller="Mensajes"
-                                   asp-action="Conversacion"
-                                   asp-route-usuarioId="@Model.Entrenador.Id"
-                                   class="btn btn-sm btn-outline-dark">
-                                    <i class="bi bi-chat-dots"></i> Mensaje
-                                </a>
+                                    <a asp-controller="Mensajes"
+                                       asp-action="Conversacion"
+                                       asp-route-usuarioId="@Model.Entrenador.Id"
+                                       class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-chat-dots"></i> Mensaje
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Usuarios"
+                                       asp-action="Details"
+                                       asp-route-id="@Model.Entrenador.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-person-badge"></i> Ver perfil
+                                    </a>
+                                }
                             </div>
                         }
                     </div>

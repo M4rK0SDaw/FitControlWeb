@@ -1,4 +1,4 @@
-﻿@model FitControlWeb.ViewModels.UsuarioCreateViewModel
+@model FitControlWeb.ViewModels.UsuarioCreateViewModel
 
 @{
     ViewData["Title"] = "Nuevo usuario";
@@ -20,13 +20,11 @@
         </a>
     </div>
 
-    @* <form asp-action="Create" method="post"> *@
     <form asp-action="Create" method="post" enctype="multipart/form-data">
-    
         @Html.AntiForgeryToken()
         @if (ViewData.ModelState.ErrorCount > 0)
         {
-            <div asp-validation-summary="All" class="alert alert-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none" data-fit-validation-toast="true"></div>
         }
 
         <div class="row g-3">
@@ -56,7 +54,7 @@
 
             <div class="col-md-6">
                 <label asp-for="RolId" class="form-label">Rol</label>
-                <select asp-for="RolId" asp-items="ViewBag.Roles" class="form-select">
+                <select asp-for="RolId" asp-items="Model.Roles" class="form-select">
                     <option value="">Selecciona un rol</option>
                 </select>
                 <span asp-validation-for="RolId" class="text-danger small"></span>
@@ -67,15 +65,16 @@
                 <input asp-for="Password" type="password" class="form-control" placeholder="Contraseña inicial" />
                 <span asp-validation-for="Password" class="text-danger small"></span>
             </div>
+
             <div class="col-md-6">
                 <label asp-for="Foto" class="form-label">Foto de perfil</label>
                 <input asp-for="Foto"
                        type="file"
                        class="form-control"
-                       accept="image/png,image/jpeg,image/webp" />                       
+                       accept="image/png,image/jpeg,image/webp" />
                 <span asp-validation-for="Foto" class="text-danger small"></span>
             </div>
-        </div>        
+        </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">
             <a asp-action="Index" class="btn btn-outline-secondary">

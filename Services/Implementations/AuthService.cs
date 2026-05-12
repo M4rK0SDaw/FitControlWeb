@@ -33,7 +33,21 @@ public class AuthService : IAuthService
             return ServiceResult<Usuario>.Fail("La cuenta no esta activa.", "ACCOUNT_INACTIVE");
 
         if (usuario.Bloqueado == true)
-            return ServiceResult<Usuario>.Fail("La cuenta esta bloqueada. Revisa tu email para recuperarla.", "ACCOUNT_BLOCKED");
+        {
+            if (string.IsNullOrWhiteSpace(usuario.RefreshToken) ||
+                usuario.RefreshTokenExpiryTime == null ||
+                usuario.RefreshTokenExpiryTime <= DateTime.Now)
+            {
+                usuario.RefreshToken = CrearToken();
+                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
+                await _context.SaveChangesAsync();
+            }
+
+            return ServiceResult<Usuario>.Fail(
+                "La cuenta esta bloqueada. Revisa tu email para recuperarla.",
+                "ACCOUNT_BLOCKED",
+                usuario);
+        }
 
         var passwordOk = BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
 
@@ -55,7 +69,7 @@ public class AuthService : IAuthService
                 usuario.Bloqueado = true;
                 cuentaBloqueada = true;
                 usuario.RefreshToken = CrearToken();
-                usuario.RefreshTokenExpiryTime = DateTime.Now.AddHours(1);
+                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
             }
 
             await _context.SaveChangesAsync();
@@ -164,7 +178,7 @@ public class AuthService : IAuthService
             return ServiceResult<Usuario>.Fail("Usuario no encontrado.", "USUARIO_NO_EXISTE");
 
         usuario.RefreshToken = CrearToken();
-        usuario.RefreshTokenExpiryTime = DateTime.Now.AddHours(1);
+        usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
 
         await _context.SaveChangesAsync();
 

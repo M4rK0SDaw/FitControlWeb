@@ -6,7 +6,7 @@
     var tipos = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.TipoSuscripcion>();
 
     int currentPage = ViewBag.CurrentPage ?? 1;
-    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;   
     int pageSize = ViewBag.PageSize ?? 10;
     int totalTipos = ViewBag.TotalTipos ?? 0;
 
@@ -130,7 +130,7 @@
                     @foreach (var t in tipos)
                     {
                         <tr>
-                            <td class="fw-semibold">@t.Nombre</td>
+                            <td class="fw-semibold"><strong>@t.Nombre</strong></td>
 
                             <td>@t.Precio.ToString("0.00") €</td>
 

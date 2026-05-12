@@ -1,9 +1,7 @@
-using FitControlWeb.Helpers;
 using FitControlWeb.Services.Interfaces;
 using FitControlWeb.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace FitControlWeb.Controllers;
 
@@ -11,45 +9,25 @@ namespace FitControlWeb.Controllers;
 public class UsuariosController : Controller
 {
     private readonly IUsuarioService _usuarioService;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ILogger<UsuariosController> _logger;
 
-    public UsuariosController(IUsuarioService usuarioService)
+    public UsuariosController(
+        IUsuarioService usuarioService,
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
+        ILogger<UsuariosController> logger)
     {
         _usuarioService = usuarioService;
+        _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
+        _logger = logger;
     }
 
-    public async Task<IActionResult> Index(
-        string? search,
-        int? rolId,
-        bool? activo,
-        int page = 1,
-        int pageSize = 10)
+    public async Task<IActionResult> Index(string? search, int? rolId, bool? activo, int page = 1, int pageSize = 10)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
-
-        var usuarios = await _usuarioService.GetFiltradosAsync(search, rolId, activo, page, pageSize);
-        var totalItems = await _usuarioService.CountFiltradosAsync(search, rolId, activo);
-
-        var vm = usuarios.Select(u => new UsuarioListViewModel
-        {
-            Id = u.Id,
-            Nombre = u.Nombre,
-            Apellidos = u.Apellidos,
-            Email = u.Email,
-            Rol = u.Rol.Nombre,
-            Activo = u.Activo ?? false
-        }).ToList();
-
-        ViewBag.Search = search;
-        ViewBag.RolId = rolId;
-        ViewBag.Activo = activo;
-        ViewBag.CurrentPage = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-
-        await CargarKpisAsync();
-        await CargarRolesAsync();
-
+        var vm = await _usuarioService.GetIndexViewModelAsync(search, rolId, activo, page, pageSize);
         return View(vm);
     }
 
@@ -66,8 +44,7 @@ public class UsuariosController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        await CargarRolesAsync();
-        return View();
+        return View(await _usuarioService.GetCreateViewModelAsync());
     }
 
     [HttpPost]
@@ -78,7 +55,7 @@ public class UsuariosController : Controller
 
         if (!ModelState.IsValid)
         {
-            await CargarRolesAsync();
+            model.Roles = (await _usuarioService.GetCreateViewModelAsync()).Roles;
             return View(model);
         }
 
@@ -88,34 +65,35 @@ public class UsuariosController : Controller
         if (!result.Success)
         {
             AddServiceError(result.Code, result.Message);
-            await CargarRolesAsync();
+            model.Roles = (await _usuarioService.GetCreateViewModelAsync()).Roles;
             return View(model);
         }
 
+        try
+        {
+            var template = _emailTemplateService.EmailBienvenida(result.Data!.Nombre);
+            await _emailService.SendAsync(result.Data.Email, template.Subject, template.HtmlBody);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar el correo de bienvenida al usuario {UserId}", result.Data!.Id);
+            TempData["Warning"] = "El usuario se ha creado correctamente, pero no se pudo enviar el email de bienvenida.";
+        }
+
         TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return model.RolId == 3
+            ? RedirectToAction("Create", "Suscripciones", new { usuarioId = result.Data!.Id })
+            : RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var usuario = await _usuarioService.GetByIdAsync(id);
+        var vm = await _usuarioService.GetEditViewModelAsync(id);
 
-        if (usuario == null)
+        if (vm == null)
             return NotFound();
 
-        var vm = new UsuarioEditViewModel
-        {
-            Id = usuario.Id,
-            Nombre = usuario.Nombre,
-            Apellidos = usuario.Apellidos,
-            Email = usuario.Email,
-            Telefono = usuario.Telefono,
-            RolId = usuario.RolId,
-            Activo = usuario.Activo ?? true
-        };
-
-        await CargarRolesAsync();
         return View(vm);
     }
 
@@ -125,7 +103,8 @@ public class UsuariosController : Controller
     {
         if (!ModelState.IsValid)
         {
-            await CargarRolesAsync();
+            var existingVm = await _usuarioService.GetEditViewModelAsync(model.Id);
+            model.Roles = existingVm?.Roles ?? new();
             return View(model);
         }
 
@@ -134,7 +113,8 @@ public class UsuariosController : Controller
         if (!result.Success)
         {
             AddServiceError(result.Code, result.Message);
-            await CargarRolesAsync();
+            var existingVm = await _usuarioService.GetEditViewModelAsync(model.Id);
+            model.Roles = existingVm?.Roles ?? new();
             return View(model);
         }
 
@@ -147,9 +127,7 @@ public class UsuariosController : Controller
     public async Task<IActionResult> Delete(int id, string? returnUrl)
     {
         var result = await _usuarioService.SoftDeleteAsync(id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectLocalOrIndex(returnUrl);
     }
 
@@ -158,9 +136,7 @@ public class UsuariosController : Controller
     public async Task<IActionResult> Reactivar(int id, string? returnUrl)
     {
         var result = await _usuarioService.ActivarAsync(id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectLocalOrIndex(returnUrl);
     }
 
@@ -169,7 +145,6 @@ public class UsuariosController : Controller
     public async Task<IActionResult> SubirFoto(int id, IFormFile foto)
     {
         var result = await _usuarioService.GuardarFotoAsync(id, foto);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
 
         if (result.Code == "USUARIO")
@@ -178,136 +153,52 @@ public class UsuariosController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    [Authorize(Roles = "Administrador")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EnviarEmail(int id, string asunto, string mensaje)
+    {
+        var usuario = await _usuarioService.GetByIdAsync(id);
+
+        if (usuario == null)
+            return NotFound();
+
+        if (string.IsNullOrWhiteSpace(asunto) || string.IsNullOrWhiteSpace(mensaje))
+        {
+            TempData["Error"] = "Debes indicar asunto y mensaje para enviar el email.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var template = _emailTemplateService.EmailAdminDirecto(usuario.Nombre, asunto, mensaje);
+
+        await _emailService.SendAsync(usuario.Email, template.Subject, template.HtmlBody);
+        TempData["Success"] = "Email enviado correctamente.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
     public async Task<IActionResult> ExportCsv(string? search, int? rolId, bool? activo)
     {
-        var usuarios = await _usuarioService.GetFiltradosAsync(search, rolId, activo, 1, int.MaxValue);
-
-        var headers = new[] { "Nombre", "Apellidos", "Email", "Teléfono", "Rol", "Estado" };
-
-        var bytes = ExportHelper.ToCsv(
-            usuarios,
-            headers,
-            u => new[]
-            {
-                u.Nombre,
-                u.Apellidos,
-                u.Email,
-                u.Telefono ?? "",
-                u.Rol?.Nombre ?? "",
-                u.Activo == true ? "Activo" : "Inactivo"
-            });
-
-        return File(bytes, "text/csv", "usuarios.csv");
+        var file = await _usuarioService.ExportCsvAsync(search, rolId, activo);
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
-    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportExcel(string? search, int? rolId, bool? activo)
     {
-        var usuarios = await _usuarioService.GetFiltradosAsync(search, rolId, activo, 1, int.MaxValue);
-
-        var filters = new[]
-        {
-            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"RolId: {(rolId.HasValue ? rolId.Value.ToString() : "Todos")}",
-            $"Activo: {(activo.HasValue ? (activo.Value ? "Sí" : "No") : "Todos")}"
-        };
-
-        var summary = new List<ReportSummaryItem>
-        {
-            new() { Label = "Total usuarios", Value = usuarios.Count.ToString() },
-            new() { Label = "Activos", Value = usuarios.Count(u => u.Activo == true).ToString() },
-            new() { Label = "Inactivos", Value = usuarios.Count(u => u.Activo != true).ToString() }
-        };
-
-        var headers = new[] { "Nombre", "Apellidos", "Email", "Teléfono", "Rol", "Estado" };
-
-        var bytes = ExportHelper.ToExcel(
-            usuarios,
-            "Usuarios",
-            "Listado de usuarios",
-            "Usuarios filtrados del sistema",
-            filters,
-            summary,
-            headers,
-            u => new object[]
-            {
-                u.Nombre,
-                u.Apellidos,
-                u.Email,
-                u.Telefono ?? "",
-                u.Rol?.Nombre ?? "",
-                u.Activo == true ? "Activo" : "Inactivo"
-            });
-
-        return File(
-            bytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "usuarios.xlsx");
+        var file = await _usuarioService.ExportExcelAsync(search, rolId, activo);
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
-    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportPdf(string? search, int? rolId, bool? activo)
     {
         try
         {
-            var usuarios = await _usuarioService.GetFiltradosAsync(search, rolId, activo, 1, int.MaxValue);
-
-            var filters = new[]
-            {
-                $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-                $"RolId: {(rolId.HasValue ? rolId.Value.ToString() : "Todos")}",
-                $"Activo: {(activo.HasValue ? (activo.Value ? "Sí" : "No") : "Todos")}"
-            };
-
-            var summary = new List<ReportSummaryItem>
-            {
-                new() { Label = "Total usuarios", Value = usuarios.Count.ToString() },
-                new() { Label = "Activos", Value = usuarios.Count(u => u.Activo == true).ToString() },
-                new() { Label = "Inactivos", Value = usuarios.Count(u => u.Activo != true).ToString() }
-            };
-
-            var headers = new[] { "Nombre", "Email", "Teléfono", "Rol", "Estado" };
-
-            var bytes = ExportHelper.ToPdf(
-                usuarios,
-                "Listado de usuarios",
-                "Usuarios filtrados del sistema",
-                filters,
-                summary,
-                headers,
-                u => new[]
-                {
-                    $"{u.Nombre} {u.Apellidos}",
-                    u.Email,
-                    u.Telefono ?? "",
-                    u.Rol?.Nombre ?? "",
-                    u.Activo == true ? "Activo" : "Inactivo"
-                });
-
-            return File(bytes, "application/pdf", "usuarios.pdf");
+            var file = await _usuarioService.ExportPdfAsync(search, rolId, activo);
+            return File(file.Content, file.ContentType, file.FileName);
         }
         catch (Exception ex)
         {
             TempData["Error"] = $"Error al generar PDF: {ex.Message}";
             return RedirectToAction(nameof(Index), new { search, rolId, activo });
         }
-    }
-
-    private async Task CargarRolesAsync()
-    {
-        ViewBag.Roles = new SelectList(await _usuarioService.GetRolesAsync(), "Id", "Nombre");
-    }
-
-    private async Task CargarKpisAsync()
-    {
-        var kpis = await _usuarioService.GetKpisAsync();
-
-        ViewBag.TotalUsuarios = kpis.TotalUsuarios;
-        ViewBag.UsuariosActivos = kpis.UsuariosActivos;
-        ViewBag.UsuariosInactivos = kpis.UsuariosInactivos;
-        ViewBag.TotalClientes = kpis.TotalClientes;
-        ViewBag.TotalEntrenadores = kpis.TotalEntrenadores;
     }
 
     private void AddServiceError(string? code, string message)
@@ -318,9 +209,8 @@ public class UsuariosController : Controller
             case "EMAIL_DUPLICADO":
                 ModelState.AddModelError("Email", message);
                 break;
-
             default:
-                ModelState.AddModelError("", message);
+                ModelState.AddModelError(string.Empty, message);
                 break;
         }
     }

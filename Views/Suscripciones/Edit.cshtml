@@ -1,11 +1,8 @@
-﻿@model FitControlWeb.ViewModels.SuscripcionEditViewModel
-@using FitControlWeb.Models.Entities
+@model FitControlWeb.ViewModels.SuscripcionEditViewModel
 
 @{
     ViewData["Title"] = "Editar suscripción";
-
-    var tipos = ViewBag.TiposSuscripcionData as List<TipoSuscripcion>
-        ?? new List<TipoSuscripcion>();
+    var tipos = Model.TiposSuscripcionData;
 }
 
 @section Styles {
@@ -30,7 +27,7 @@
 
         @if (ViewData.ModelState.ErrorCount > 0)
         {
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none" data-fit-validation-toast="true"></div>
         }
 
         <div class="row g-4">
@@ -41,7 +38,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label asp-for="UsuarioId" class="form-label">Cliente</label>
-                            <select asp-for="UsuarioId" asp-items="ViewBag.Usuarios" class="form-select"></select>
+                            <select asp-for="UsuarioId" asp-items="Model.Usuarios" class="form-select"></select>
                             <span asp-validation-for="UsuarioId" class="text-danger small"></span>
                         </div>
 
@@ -55,7 +52,7 @@
                                             data-duracion="@tipo.DuracionDias"
                                             data-precio="@tipo.Precio.ToString("0.00")"
                                             selected="@(tipo.Id == Model.TipoSuscripcionId)">
-                                        @tipo.Nombre - @tipo.Precio.ToString("0.00") € - @tipo.DuracionDias días
+                                        @tipo.Nombre - @tipo.Precio.ToString("0.00") € - @tipo.DuracionDias dias
                                     </option>
                                 }
                             </select>
@@ -70,7 +67,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="FechaFin" class="form-label">Fecha fin</label>                            
+                            <label asp-for="FechaFin" class="form-label">Fecha fin</label>
                             <input asp-for="FechaFin" type="date" class="form-control" id="fechaFin" readonly />
                             <span asp-validation-for="FechaFin" class="text-danger small"></span>
                         </div>
@@ -92,9 +89,9 @@
                         <label asp-for="Activa" class="form-check-label">Suscripción activa</label>
                     </div>
 
-                    <small class="text-muted d-block mt-3">                        
-                        Si cambias el tipo o la fecha de inicio, la fecha fin se recalcula automáticamente.
-                    </small>                    
+                    <small class="text-muted d-block mt-3">
+                        Si cambias el tipo o la fecha de inicio, la fecha fin se recalcula automaticamente.
+                    </small>
                 </div>
             </div>
         </div>
@@ -108,6 +105,7 @@
         </div>
     </form>
 </div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 

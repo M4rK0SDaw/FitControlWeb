@@ -1,4 +1,3 @@
-using FitControlWeb.Helpers;
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,35 +16,16 @@ public class FacturasController : Controller
     }
 
     [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Index(
-        string? search,
-        bool? pagada,
-        int page = 1,
-        int pageSize = 10)
+    public async Task<IActionResult> Index(string? search, bool? pagada, int page = 1, int pageSize = 10)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
-
-        var facturas = await _facturaService.GetFiltradasAsync(search, pagada, page, pageSize);
-        var totalItems = await _facturaService.CountFiltradasAsync(search, pagada);
-
-        ViewBag.Search = search;
-        ViewBag.Pagada = pagada;
-        ViewBag.CurrentPage = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-        ViewBag.TotalFacturas = totalItems;
-        ViewBag.TotalPagadas = facturas.Count(f => f.Pagada == true);
-        ViewBag.TotalPendientes = facturas.Count(f => f.Pagada != true);
-        ViewBag.ImportePagina = facturas.Sum(f => f.Total);
-
-        return View(facturas);
+        var vm = await _facturaService.GetIndexViewModelAsync(search, pagada, page, pageSize);
+        return View(vm);
     }
 
     [Authorize(Roles = "Administrador,Cliente")]
     public async Task<IActionResult> Details(int id)
     {
-        if (!await PuedeVerFacturaAsync(id))
+        if (!await _facturaService.PuedeVerFacturaAsync(id, GetUsuarioId(), User.IsInRole("Administrador")))
             return Forbid();
 
         var factura = await _facturaService.GetByIdAsync(id);
@@ -78,7 +58,7 @@ public class FacturasController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PagarConStripe(int id)
     {
-        if (!await PuedeVerFacturaAsync(id))
+        if (!await _facturaService.PuedeVerFacturaAsync(id, GetUsuarioId(), User.IsInRole("Administrador")))
             return Forbid();
 
         var successUrl = Url.Action(nameof(StripeSuccess), "Facturas", null, Request.Scheme)!;
@@ -99,9 +79,7 @@ public class FacturasController : Controller
     public async Task<IActionResult> StripeSuccess(int facturaId, string session_id)
     {
         var result = await _facturaService.ConfirmarPagoStripeAsync(facturaId, session_id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectToAction(nameof(Details), new { id = facturaId });
     }
 
@@ -115,184 +93,64 @@ public class FacturasController : Controller
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportCsv(string? search, bool? pagada)
     {
-        var facturas = await _facturaService.GetFiltradasAsync(search, pagada, 1, int.MaxValue);
-
-        var headers = new[]
-        {
-            "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
-        };
-
-        var bytes = ExportHelper.ToCsv(
-            facturas,
-            headers,
-            f => new[]
-            {
-                f.NumeroFactura,
-                $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-                f.Usuario?.Email ?? "",
-                f.TipoFactura?.Nombre ?? "",
-                f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
-                f.Subtotal.ToString("0.00"),
-                f.Impuestos.ToString("0.00"),
-                f.Total.ToString("0.00"),
-                f.Pagada == true ? "Pagada" : "Pendiente"
-            });
-
-        return File(bytes, "text/csv", "facturas.csv");
+        var file = await _facturaService.ExportCsvAsync(search, pagada);
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportExcel(string? search, bool? pagada)
     {
-        var facturas = await _facturaService.GetFiltradasAsync(search, pagada, 1, int.MaxValue);
-
-        var filters = new[]
-        {
-            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
-        };
-
-        var summary = new List<ReportSummaryItem>
-        {
-            new() { Label = "Total facturas", Value = facturas.Count.ToString() },
-            new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
-            new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
-            new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
-        };
-
-        var headers = new[]
-        {
-            "Número", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
-        };
-
-        var bytes = ExportHelper.ToExcel(
-            facturas,
-            "Facturas",
-            "Listado de facturas",
-            "Facturas filtradas",
-            filters,
-            summary,
-            headers,
-            f => new object[]
-            {
-                f.NumeroFactura,
-                $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-                f.Usuario?.Email ?? "",
-                f.TipoFactura?.Nombre ?? "",
-                f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
-                f.Subtotal,
-                f.Impuestos,
-                f.Total,
-                f.Pagada == true ? "Pagada" : "Pendiente"
-            });
-
-        return File(
-            bytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "facturas.xlsx");
+        var file = await _facturaService.ExportExcelAsync(search, pagada);
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportPdf(string? search, bool? pagada)
     {
-        try
+        var result = await _facturaService.ExportPdfAsync(search, pagada);
+
+        if (!result.Success || result.Data == null)
         {
-            var facturas = await _facturaService.GetFiltradasAsync(search, pagada, 1, int.MaxValue);
-
-            var filters = new[]
-            {
-                $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-                $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Sí" : "No") : "Todas")}"
-            };
-
-            var summary = new List<ReportSummaryItem>
-            {
-                new() { Label = "Total facturas", Value = facturas.Count.ToString() },
-                new() { Label = "Pagadas", Value = facturas.Count(f => f.Pagada == true).ToString() },
-                new() { Label = "Pendientes", Value = facturas.Count(f => f.Pagada != true).ToString() },
-                new() { Label = "Importe total", Value = facturas.Sum(f => f.Total).ToString("0.00") + " €" }
-            };
-
-            var headers = new[] { "Número", "Cliente", "Fecha", "Total", "Estado" };
-
-            var bytes = ExportHelper.ToPdf(
-                facturas,
-                "Listado de facturas",
-                "Facturas filtradas",
-                filters,
-                summary,
-                headers,
-                f => new[]
-                {
-                    f.NumeroFactura,
-                    $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}",
-                    f.FechaEmision?.ToString("dd/MM/yyyy") ?? "",
-                    $"{f.Total:0.00} €",
-                    f.Pagada == true ? "Pagada" : "Pendiente"
-                });
-
-            return File(bytes, "application/pdf", "facturas.pdf");
-        }
-        catch (Exception ex)
-        {
-            TempData["Error"] = $"Error al generar PDF: {ex.Message}";
+            TempData["Error"] = result.Message;
             return RedirectToAction(nameof(Index), new { search, pagada });
         }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Administrador,Cliente")]
     [HttpGet]
     public async Task<IActionResult> DescargarPdf(int id)
     {
-        if (!await PuedeVerFacturaAsync(id))
+        var result = await _facturaService.GetPdfFileAsync(id, GetUsuarioId(), User.IsInRole("Administrador"), false);
+
+        if (result.Code == "FORBID")
             return Forbid();
 
-        var factura = await _facturaService.GetByIdAsync(id);
-
-        if (factura == null)
+        if (result.Code == "NOT_FOUND")
             return NotFound();
 
-        var bytes = FacturaPdfHelper.GenerarFacturaPdf(factura);
-
-        return File(bytes, "application/pdf", CrearNombreFacturaPdf(factura.NumeroFactura));
+        return File(result.Data!.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Administrador,Cliente")]
     [HttpGet]
     public async Task<IActionResult> VerPdf(int id)
     {
-        if (!await PuedeVerFacturaAsync(id))
+        var result = await _facturaService.GetPdfFileAsync(id, GetUsuarioId(), User.IsInRole("Administrador"), true);
+
+        if (result.Code == "FORBID")
             return Forbid();
 
-        var factura = await _facturaService.GetByIdAsync(id);
-
-        if (factura == null)
+        if (result.Code == "NOT_FOUND")
             return NotFound();
 
-        var bytes = FacturaPdfHelper.GenerarFacturaPdf(factura);
-
-        Response.Headers.ContentDisposition = $"inline; filename=\"{CrearNombreFacturaPdf(factura.NumeroFactura)}\"";
-
-        return File(bytes, "application/pdf");
+        Response.Headers.ContentDisposition = $"inline; filename=\"{result.Data!.FileName}\"";
+        return File(result.Data.Content, result.Data.ContentType);
     }
 
-    private async Task<bool> PuedeVerFacturaAsync(int facturaId)
+    private int GetUsuarioId()
     {
-        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        return await _facturaService.PuedeVerFacturaAsync(
-            facturaId,
-            usuarioId,
-            User.IsInRole("Administrador"));
-    }
-
-    private static string CrearNombreFacturaPdf(string numeroFactura)
-    {
-        var invalidChars = Path.GetInvalidFileNameChars();
-        var numeroSeguro = new string(numeroFactura
-            .Select(c => invalidChars.Contains(c) ? '-' : c)
-            .ToArray());
-
-        return $"factura-{numeroSeguro}.pdf";
+        return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     }
 }

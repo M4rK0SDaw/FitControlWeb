@@ -47,7 +47,7 @@
             <form asp-controller="Account" asp-action="Login" method="post">
                 @Html.AntiForgeryToken()
 
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3 d-none" data-fit-validation-toast="true"></div>
 
                 <div class="mb-4">
                     <label asp-for="Email" class="form-label text-muted">

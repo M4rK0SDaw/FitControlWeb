@@ -39,3 +39,36 @@
         </script>
     }
 }
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const summaries = Array.from(document.querySelectorAll('[data-fit-validation-toast="true"]'));
+
+        summaries.forEach(summary => {
+            const messages = Array.from(summary.querySelectorAll('li, span'))
+                .map(node => node.textContent?.trim())
+                .filter(Boolean);
+
+            if (!messages.length) {
+                return;
+            }
+
+            summary.classList.add('d-none');
+
+            const uniqueMessages = [...new Set(messages)];
+            const html = uniqueMessages.length === 1
+                ? `<p class="mb-0">${uniqueMessages[0]}</p>`
+                : `<ul class="mb-0 text-start ps-3">${uniqueMessages.map(message => `<li>${message}</li>`).join('')}</ul>`;
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Revisa el formulario',
+                html,
+                confirmButtonText: 'Entendido',
+                customClass: {
+                    popup: 'fit-toast fit-form-modal'
+                }
+            });
+        });
+    });
+</script>

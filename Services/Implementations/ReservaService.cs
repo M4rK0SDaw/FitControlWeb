@@ -1,7 +1,9 @@
-﻿using FitControlWeb.Data;
+using FitControlWeb.Data;
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
+using FitControlWeb.ViewModels.Reservas;
+using FitControlWeb.ViewModels.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace FitControlWeb.Services.Implementations;
@@ -62,7 +64,7 @@ public class ReservaService : IReservaService
             .FirstOrDefaultAsync(c => c.Id == claseId && c.Activo == true);
 
         if (clase == null)
-            return ServiceResult.Fail("La clase no existe o no está activa.", "CLASE");
+            return ServiceResult.Fail("La clase no existe o no esta activa.", "CLASE");
 
         if (clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
             return ServiceResult.Fail("No puedes reservar una clase pasada.", "CLASE");
@@ -73,12 +75,10 @@ public class ReservaService : IReservaService
             s.FechaFin >= DateTime.Today);
 
         if (!tieneSuscripcionActiva)
-            return ServiceResult.Fail("Necesitas una suscripción activa para reservar clases.", "SUSCRIPCION");
+            return ServiceResult.Fail("Necesitas una suscripcion activa para reservar clases.", "SUSCRIPCION");
 
         var reservaExistente = await _context.Reservas
-            .FirstOrDefaultAsync(r =>
-                r.UsuarioId == usuarioId &&
-                r.ClaseId == claseId);
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId && r.ClaseId == claseId);
 
         if (reservaExistente != null && reservaExistente.Activo == true)
             return ServiceResult.Fail("Ya tienes una reserva activa en esta clase.", "RESERVA");
@@ -93,8 +93,7 @@ public class ReservaService : IReservaService
         if (!await HayPlazasAsync(claseId))
             return ServiceResult.Fail("No hay plazas disponibles.", "PLAZAS");
 
-        var estadoActiva = await _context.EstadoReservas
-            .FirstOrDefaultAsync(e => e.Nombre == "Activa");
+        var estadoActiva = await _context.EstadoReservas.FirstOrDefaultAsync(e => e.Nombre == "Activa");
 
         if (estadoActiva == null)
             return ServiceResult.Fail("No existe el estado 'Activa' en la base de datos.", "ESTADO");
@@ -107,7 +106,6 @@ public class ReservaService : IReservaService
             reservaExistente.FechaReserva = DateTime.Now;
 
             await _context.SaveChangesAsync();
-
             return ServiceResult.Ok("Reserva realizada correctamente.");
         }
 
@@ -125,19 +123,18 @@ public class ReservaService : IReservaService
 
         return ServiceResult.Ok("Reserva realizada correctamente.");
     }
+
     public async Task<ServiceResult> CancelarAsync(int reservaId)
     {
-        var reserva = await _context.Reservas
-            .FirstOrDefaultAsync(r => r.Id == reservaId);
+        var reserva = await _context.Reservas.FirstOrDefaultAsync(r => r.Id == reservaId);
 
         if (reserva == null)
             return ServiceResult.Fail("La reserva no existe.", "RESERVA");
 
         if (reserva.Activo != true)
-            return ServiceResult.Fail("La reserva ya está cancelada.", "CANCELADA");
+            return ServiceResult.Fail("La reserva ya esta cancelada.", "CANCELADA");
 
-        var estadoCancelada = await _context.EstadoReservas
-            .FirstOrDefaultAsync(e => e.Nombre == "Cancelada");
+        var estadoCancelada = await _context.EstadoReservas.FirstOrDefaultAsync(e => e.Nombre == "Cancelada");
 
         if (estadoCancelada == null)
             return ServiceResult.Fail("No existe el estado 'Cancelada' en la base de datos.", "ESTADO");
@@ -161,17 +158,15 @@ public class ReservaService : IReservaService
             return ServiceResult.Fail("La reserva no existe.", "RESERVA");
 
         if (reserva.Activo == true)
-            return ServiceResult.Fail("La reserva ya está activa.", "ACTIVA");
+            return ServiceResult.Fail("La reserva ya esta activa.", "ACTIVA");
 
         if (reserva.Clase == null || reserva.Clase.Activo != true)
-            return ServiceResult.Fail("La clase no existe o no está activa.", "ACTIVA");
+            return ServiceResult.Fail("La clase no existe o no esta activa.", "ACTIVA");
 
         if (reserva.Clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
             return ServiceResult.Fail("No puedes reactivar una reserva de una clase pasada.", "CLASE");
 
-        var reservasActivas = await _context.Reservas
-            .CountAsync(r => r.ClaseId == reserva.ClaseId && r.Activo == true);
-
+        var reservasActivas = await _context.Reservas.CountAsync(r => r.ClaseId == reserva.ClaseId && r.Activo == true);
         var capacidadMaxima = reserva.Clase.CapacidadMaxima ?? 0;
 
         if (capacidadMaxima <= 0 || reservasActivas >= capacidadMaxima)
@@ -184,8 +179,7 @@ public class ReservaService : IReservaService
                 "SOLAPE");
         }
 
-        var estadoActiva = await _context.EstadoReservas
-            .FirstOrDefaultAsync(e => e.Nombre == "Activa");
+        var estadoActiva = await _context.EstadoReservas.FirstOrDefaultAsync(e => e.Nombre == "Activa");
 
         if (estadoActiva == null)
             return ServiceResult.Fail("No existe el estado 'Activa' en la base de datos.", "ESTADO");
@@ -218,12 +212,10 @@ public class ReservaService : IReservaService
             return false;
 
         var capacidadMaxima = clase.CapacidadMaxima ?? 0;
-
         if (capacidadMaxima <= 0)
             return false;
 
         var reservasActivas = clase.Reservas.Count(r => r.Activo == true);
-
         return reservasActivas < capacidadMaxima;
     }
 
@@ -247,6 +239,219 @@ public class ReservaService : IReservaService
             .CountAsync();
     }
 
+    public async Task<List<Reserva>> GetByClaseFiltradoAsync(int claseId, string? search, string? estado, int page, int pageSize)
+    {
+        return await QueryReservasPorClase(claseId, search, estado)
+            .OrderByDescending(r => r.FechaReserva)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountByClaseFiltradoAsync(int claseId, string? search, string? estado)
+    {
+        return await QueryReservasPorClase(claseId, search, estado).CountAsync();
+    }
+
+    public async Task<List<Reserva>> GetByClaseExportAsync(int claseId, string? search, string? estado)
+    {
+        return await QueryReservasPorClase(claseId, search, estado)
+            .OrderByDescending(r => r.FechaReserva)
+            .ToListAsync();
+    }
+
+    public async Task<List<Reserva>> GetFiltradasAsync(string? search, string? estado, int page, int pageSize)
+    {
+        return await QueryReservas(search, estado)
+            .OrderByDescending(r => r.FechaReserva)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountFiltradasAsync(string? search, string? estado)
+    {
+        return await QueryReservas(search, estado).CountAsync();
+    }
+
+    public async Task<List<Reserva>> GetFiltradasAsync(string? search, string? estado, int? entrenadorId, int page, int pageSize)
+    {
+        return await QueryReservas(search, estado, entrenadorId)
+            .OrderByDescending(r => r.FechaReserva)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountFiltradasAsync(string? search, string? estado, int? entrenadorId)
+    {
+        return await QueryReservas(search, estado, entrenadorId).CountAsync();
+    }
+
+    public async Task<int> CountCanceladasAsync(int? entrenadorId)
+    {
+        var query = _context.Reservas.Where(r => r.Activo == false).AsQueryable();
+
+        if (entrenadorId.HasValue)
+            query = query.Where(r => r.Clase.EntrenadorId == entrenadorId.Value);
+
+        return await query.CountAsync();
+    }
+
+    public async Task<Clase?> GetClaseConReservasAsync(int claseId)
+    {
+        return await _context.Clases.Include(c => c.Reservas).FirstOrDefaultAsync(c => c.Id == claseId);
+    }
+
+    public async Task<bool> PuedeGestionarClaseAsync(int claseId, int? entrenadorId)
+    {
+        if (!entrenadorId.HasValue)
+            return true;
+
+        return await _context.Clases.AnyAsync(c => c.Id == claseId && c.EntrenadorId == entrenadorId.Value);
+    }
+
+    public async Task<bool> PuedeGestionarReservaAsync(int reservaId, int? entrenadorId)
+    {
+        if (!entrenadorId.HasValue)
+            return true;
+
+        return await _context.Reservas.AnyAsync(r => r.Id == reservaId && r.Clase.EntrenadorId == entrenadorId.Value);
+    }
+
+    public async Task<ReservaIndexViewModel> GetIndexViewModelAsync(string? search, string? estado, int page, int pageSize, int? entrenadorId)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
+
+        var reservas = await GetFiltradasAsync(search, estado, entrenadorId, page, pageSize);
+        var totalItems = await CountFiltradasAsync(search, estado, entrenadorId);
+
+        return new ReservaIndexViewModel
+        {
+            Reservas = reservas,
+            Search = search,
+            Estado = estado,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalItems / pageSize),
+            TotalReservas = totalItems,
+            PlazasCanceladas = await CountCanceladasAsync(entrenadorId)
+        };
+    }
+
+    public async Task<ServiceResult<ReservaPorClaseViewModel>> GetPorClaseViewModelAsync(int claseId, string? search, string? estado, int page, int pageSize, int? entrenadorId)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
+
+        var clase = await GetClaseConReservasAsync(claseId);
+        if (clase == null)
+            return ServiceResult<ReservaPorClaseViewModel>.Fail("La clase no existe.", "NOT_FOUND");
+
+        if (!await PuedeGestionarClaseAsync(claseId, entrenadorId))
+            return ServiceResult<ReservaPorClaseViewModel>.Fail("No tienes permisos para gestionar esta clase.", "FORBID");
+
+        var reservas = await GetByClaseFiltradoAsync(claseId, search, estado, page, pageSize);
+        var totalItems = await CountByClaseFiltradoAsync(claseId, search, estado);
+
+        return ServiceResult<ReservaPorClaseViewModel>.Ok(new ReservaPorClaseViewModel
+        {
+            Reservas = reservas,
+            ClaseId = clase.Id,
+            Search = search,
+            Estado = estado,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalItems / pageSize),
+            TotalReservas = totalItems,
+            NombreClase = clase.Nombre,
+            FechaClase = clase.Fecha.ToDateTime(TimeOnly.MinValue),
+            HoraInicio = clase.HoraInicio,
+            HoraFin = clase.HoraFin,
+            CapacidadMaxima = clase.CapacidadMaxima ?? 0,
+            PlazasOcupadas = clase.Reservas.Count(r => r.Activo == true),
+            PlazasCanceladas = clase.Reservas.Count(r => r.Activo == false)
+        });
+    }
+
+    public async Task<ServiceResult<FileContentViewModel>> ExportReservasCsvAsync(int claseId, string? search, string? estado, int? entrenadorId)
+    {
+        if (!await PuedeGestionarClaseAsync(claseId, entrenadorId))
+            return ServiceResult<FileContentViewModel>.Fail("No tienes permisos para gestionar esta clase.", "FORBID");
+
+        var reservas = await GetByClaseExportAsync(claseId, search, estado);
+        var headers = new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" };
+        var bytes = ExportHelper.ToCsv(reservas, headers, ReservaExportRow);
+
+        return ServiceResult<FileContentViewModel>.Ok(new FileContentViewModel
+        {
+            Content = bytes,
+            ContentType = "text/csv",
+            FileName = "reservas-clase.csv"
+        });
+    }
+
+    public async Task<ServiceResult<FileContentViewModel>> ExportReservasExcelAsync(int claseId, string? search, string? estado, int? entrenadorId)
+    {
+        if (!await PuedeGestionarClaseAsync(claseId, entrenadorId))
+            return ServiceResult<FileContentViewModel>.Fail("No tienes permisos para gestionar esta clase.", "FORBID");
+
+        var reservas = await GetByClaseExportAsync(claseId, search, estado);
+        var primera = reservas.FirstOrDefault();
+        var subtitle = primera?.Clase != null
+            ? $"{primera.Clase.Nombre} - {primera.Clase.Fecha:dd/MM/yyyy} - {primera.Clase.HoraInicio} a {primera.Clase.HoraFin}"
+            : "Reservas de la clase";
+
+        var bytes = ExportHelper.ToExcel(
+            reservas,
+            "Reservas",
+            "Reservas por clase",
+            subtitle,
+            GetFiltros(search, estado),
+            GetResumen(reservas),
+            new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" },
+            r => ReservaExportRow(r).Cast<object>().ToArray());
+
+        return ServiceResult<FileContentViewModel>.Ok(new FileContentViewModel
+        {
+            Content = bytes,
+            ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            FileName = "reservas-clase.xlsx"
+        });
+    }
+
+    public async Task<ServiceResult<FileContentViewModel>> ExportReservasPdfAsync(int claseId, string? search, string? estado, int? entrenadorId)
+    {
+        try
+        {
+            if (!await PuedeGestionarClaseAsync(claseId, entrenadorId))
+                return ServiceResult<FileContentViewModel>.Fail("No tienes permisos para gestionar esta clase.", "FORBID");
+
+            var reservas = await GetByClaseExportAsync(claseId, search, estado);
+
+            var bytes = ExportHelper.ToPdf(
+                reservas,
+                "Reservas por clase",
+                "Listado de reservas filtradas",
+                GetFiltros(search, estado),
+                GetResumen(reservas),
+                new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" },
+                ReservaExportRow);
+
+            return ServiceResult<FileContentViewModel>.Ok(new FileContentViewModel
+            {
+                Content = bytes,
+                ContentType = "application/pdf",
+                FileName = "reservas-clase.pdf"
+            });
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<FileContentViewModel>.Fail($"Error al generar PDF: {ex.Message}", "PDF_ERROR");
+        }
+    }
+
     private IQueryable<Reserva> QueryReservasPorClase(int claseId, string? search, string? estado)
     {
         var query = _context.Reservas
@@ -265,44 +470,9 @@ public class ReservaService : IReservaService
         }
 
         if (!string.IsNullOrWhiteSpace(estado))
-        {
             query = query.Where(r => r.EstadoReserva.Nombre == estado);
-        }
 
         return query;
-    }
-
-    public async Task<List<Reserva>> GetByClaseFiltradoAsync(
-        int claseId,
-        string? search,
-        string? estado,
-        int page,
-        int pageSize)
-    {
-        return await QueryReservasPorClase(claseId, search, estado)
-            .OrderByDescending(r => r.FechaReserva)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<int> CountByClaseFiltradoAsync(
-        int claseId,
-        string? search,
-        string? estado)
-    {
-        return await QueryReservasPorClase(claseId, search, estado)
-            .CountAsync();
-    }
-
-    public async Task<List<Reserva>> GetByClaseExportAsync(
-        int claseId,
-        string? search,
-        string? estado)
-    {
-        return await QueryReservasPorClase(claseId, search, estado)
-            .OrderByDescending(r => r.FechaReserva)
-            .ToListAsync();
     }
 
     private IQueryable<Reserva> QueryReservas(string? search, string? estado)
@@ -323,87 +493,9 @@ public class ReservaService : IReservaService
         }
 
         if (!string.IsNullOrWhiteSpace(estado))
-        {
             query = query.Where(r => r.EstadoReserva.Nombre == estado);
-        }
 
         return query;
-    }
-
-    public async Task<List<Reserva>> GetFiltradasAsync(
-        string? search,
-        string? estado,
-        int page,
-        int pageSize)
-    {
-        return await QueryReservas(search, estado)
-            .OrderByDescending(r => r.FechaReserva)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<int> CountFiltradasAsync(string? search, string? estado)
-    {
-        return await QueryReservas(search, estado).CountAsync();
-    }
-
-    public async Task<List<Reserva>> GetFiltradasAsync(
-        string? search,
-        string? estado,
-        int? entrenadorId,
-        int page,
-        int pageSize)
-    {
-        return await QueryReservas(search, estado, entrenadorId)
-            .OrderByDescending(r => r.FechaReserva)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<int> CountFiltradasAsync(string? search, string? estado, int? entrenadorId)
-    {
-        return await QueryReservas(search, estado, entrenadorId).CountAsync();
-    }
-
-    public async Task<int> CountCanceladasAsync(int? entrenadorId)
-    {
-        var query = _context.Reservas
-            .Where(r => r.Activo == false)
-            .AsQueryable();
-
-        if (entrenadorId.HasValue)
-            query = query.Where(r => r.Clase.EntrenadorId == entrenadorId.Value);
-
-        return await query.CountAsync();
-    }
-
-    public async Task<Clase?> GetClaseConReservasAsync(int claseId)
-    {
-        return await _context.Clases
-            .Include(c => c.Reservas)
-            .FirstOrDefaultAsync(c => c.Id == claseId);
-    }
-
-    public async Task<bool> PuedeGestionarClaseAsync(int claseId, int? entrenadorId)
-    {
-        if (!entrenadorId.HasValue)
-            return true;
-
-        return await _context.Clases.AnyAsync(c =>
-            c.Id == claseId &&
-            c.EntrenadorId == entrenadorId.Value);
-    }
-
-    public async Task<bool> PuedeGestionarReservaAsync(int reservaId, int? entrenadorId)
-    {
-        if (!entrenadorId.HasValue)
-            return true;
-
-        return await _context.Reservas.AnyAsync(r =>
-            r.Id == reservaId &&
-            r.Clase.EntrenadorId == entrenadorId.Value);
     }
 
     private IQueryable<Reserva> QueryReservas(string? search, string? estado, int? entrenadorId)
@@ -428,5 +520,36 @@ public class ReservaService : IReservaService
                 r.Clase.Fecha == clase.Fecha &&
                 clase.HoraInicio < r.Clase.HoraFin &&
                 clase.HoraFin > r.Clase.HoraInicio);
+    }
+
+    private static string[] ReservaExportRow(Reserva r)
+    {
+        return new[]
+        {
+            $"{r.Usuario?.Nombre ?? ""} {r.Usuario?.Apellidos ?? ""}".Trim(),
+            r.Usuario?.Email ?? "",
+            r.Clase?.Nombre ?? "",
+            r.FechaReserva?.ToString("dd/MM/yyyy HH:mm") ?? "",
+            r.EstadoReserva?.Nombre ?? ""
+        };
+    }
+
+    private static string[] GetFiltros(string? search, string? estado)
+    {
+        return new[]
+        {
+            $"Busqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
+            $"Estado: {(string.IsNullOrWhiteSpace(estado) ? "Todos" : estado)}"
+        };
+    }
+
+    private static List<ReportSummaryItem> GetResumen(List<Reserva> reservas)
+    {
+        return new()
+        {
+            new() { Label = "Total", Value = reservas.Count.ToString() },
+            new() { Label = "Activas", Value = reservas.Count(r => r.Activo == true).ToString() },
+            new() { Label = "Canceladas", Value = reservas.Count(r => r.Activo != true).ToString() }
+        };
     }
 }

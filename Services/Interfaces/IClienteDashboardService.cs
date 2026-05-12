@@ -1,4 +1,5 @@
 using FitControlWeb.Helpers;
+using FitControlWeb.Models.Entities;
 using FitControlWeb.ViewModels;
 using FitControlWeb.ViewModels.Dashboard;
 
@@ -12,7 +13,7 @@ public interface IClienteDashboardService
     Task<ServiceResult<string>> CrearCheckoutSuscripcionAsync(int usuarioId, int tipoSuscripcionId, string successUrl, string cancelUrl);
     Task<ServiceResult<int>> ConfirmarCheckoutSuscripcionAsync(int usuarioId, string sessionId);
     Task<ServiceResult> UpdatePerfilAsync(int usuarioId, ClientePerfilViewModel model, IFormFile? foto);
-    Task<(List<Models.Entities.Factura> Facturas, int TotalItems, decimal TotalPendiente, int FacturasPendientes, int FacturasPagadas)> GetMisFacturasAsync(
+    Task<(List<Factura> Facturas, int TotalItems, decimal TotalPendiente, int FacturasPendientes, int FacturasPagadas)> GetMisFacturasAsync(
         int usuarioId,
         bool? pagada,
         int page,

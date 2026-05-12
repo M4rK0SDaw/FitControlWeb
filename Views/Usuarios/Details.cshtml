@@ -60,6 +60,13 @@
                 <i class="bi bi-pencil"></i> Editar
             </a>
 
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#emailUsuarioModal">
+                <i class="bi bi-envelope-paper"></i> Enviar email
+            </button>
+
             @if (Model.Activo == true)
             {
                 <form asp-action="Delete"
@@ -165,6 +172,41 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<div class="modal fade" id="emailUsuarioModal" tabindex="-1" aria-labelledby="emailUsuarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EnviarEmail" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="emailUsuarioModalLabel">Enviar email a @Model.Nombre</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="asuntoEmail" class="form-label">Asunto</label>
+                        <input type="text" class="form-control" id="asuntoEmail" name="asunto" maxlength="150" required />
+                    </div>
+
+                    <div class="mb-0">
+                        <label for="mensajeEmail" class="form-label">Mensaje</label>
+                        <textarea class="form-control" id="mensajeEmail" name="mensaje" rows="6" maxlength="3000" required></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-orange">
+                        <i class="bi bi-send"></i> Enviar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

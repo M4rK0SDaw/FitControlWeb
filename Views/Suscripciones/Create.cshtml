@@ -1,11 +1,8 @@
-﻿@model FitControlWeb.ViewModels.SuscripcionCreateViewModel
-@using FitControlWeb.Models.Entities
+@model FitControlWeb.ViewModels.SuscripcionCreateViewModel
 
 @{
     ViewData["Title"] = "Nueva suscripción";
-
-    var tipos = ViewBag.TiposSuscripcionData as List<TipoSuscripcion>
-        ?? new List<TipoSuscripcion>();
+    var tipos = Model.TiposSuscripcionData;
 }
 
 @section Styles {
@@ -29,7 +26,7 @@
 
         @if (ViewData.ModelState.ErrorCount > 0)
         {
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none" data-fit-validation-toast="true"></div>
         }
 
         <div class="row g-4">
@@ -40,7 +37,11 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label asp-for="UsuarioId" class="form-label">Cliente</label>
-                            <select asp-for="UsuarioId" asp-items="ViewBag.Usuarios" class="form-select">
+                            <input type="text"
+                                   id="usuarioSearch"
+                                   class="form-control mb-2"
+                                   placeholder="Buscar cliente por nombre o email..." />
+                            <select asp-for="UsuarioId" asp-items="Model.Usuarios" class="form-select" id="usuarioSelect">
                                 <option value="">Selecciona cliente</option>
                             </select>
                             <span asp-validation-for="UsuarioId" class="text-danger small"></span>
@@ -57,7 +58,7 @@
                                     <option value="@tipo.Id"
                                             data-duracion="@tipo.DuracionDias"
                                             data-precio="@tipo.Precio.ToString("0.00")">
-                                        @tipo.Nombre - @tipo.Precio.ToString("0.00") € - @tipo.DuracionDias días
+                                        @tipo.Nombre - @tipo.Precio.ToString("0.00") € - @tipo.DuracionDias dias
                                     </option>
                                 }
                             </select>
@@ -126,6 +127,43 @@
         document.getElementById("tipoSuscripcion").addEventListener("change", calcularDatosSuscripcion);
         document.getElementById("fechaInicio").addEventListener("change", calcularDatosSuscripcion);
 
+        const usuarioSearchInput = document.getElementById("usuarioSearch");
+        const usuarioSelect = document.getElementById("usuarioSelect");
+        const usuarioOptionsBase = Array.from(usuarioSelect.options).map(option => ({
+            value: option.value,
+            text: option.text,
+            selected: option.selected
+        }));
+
+        function renderUsuarioOptions(filter) {
+            const normalized = (filter || "").trim().toLowerCase();
+            const currentValue = usuarioSelect.value;
+
+            usuarioSelect.innerHTML = "";
+
+            usuarioOptionsBase
+                .filter(option => !normalized || option.text.toLowerCase().includes(normalized))
+                .forEach(option => {
+                    const element = document.createElement("option");
+                    element.value = option.value;
+                    element.text = option.text;
+                    element.selected = option.value === currentValue || (option.selected && !currentValue);
+                    usuarioSelect.appendChild(element);
+                });
+
+            if (!usuarioSelect.options.length) {
+                const emptyOption = document.createElement("option");
+                emptyOption.value = "";
+                emptyOption.text = "No hay clientes con ese filtro";
+                usuarioSelect.appendChild(emptyOption);
+            }
+        }
+
+        usuarioSearchInput.addEventListener("input", function () {
+            renderUsuarioOptions(this.value);
+        });
+
+        renderUsuarioOptions("");
         calcularDatosSuscripcion();
     </script>
 }

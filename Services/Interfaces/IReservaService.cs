@@ -1,5 +1,7 @@
-﻿using FitControlWeb.Helpers;
+using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
+using FitControlWeb.ViewModels.Reservas;
+using FitControlWeb.ViewModels.Shared;
 
 namespace FitControlWeb.Services.Interfaces;
 
@@ -32,4 +34,9 @@ public interface IReservaService
     Task<Clase?> GetClaseConReservasAsync(int claseId);
     Task<bool> PuedeGestionarClaseAsync(int claseId, int? entrenadorId);
     Task<bool> PuedeGestionarReservaAsync(int reservaId, int? entrenadorId);
+    Task<ReservaIndexViewModel> GetIndexViewModelAsync(string? search, string? estado, int page, int pageSize, int? entrenadorId);
+    Task<ServiceResult<ReservaPorClaseViewModel>> GetPorClaseViewModelAsync(int claseId, string? search, string? estado, int page, int pageSize, int? entrenadorId);
+    Task<ServiceResult<FileContentViewModel>> ExportReservasCsvAsync(int claseId, string? search, string? estado, int? entrenadorId);
+    Task<ServiceResult<FileContentViewModel>> ExportReservasExcelAsync(int claseId, string? search, string? estado, int? entrenadorId);
+    Task<ServiceResult<FileContentViewModel>> ExportReservasPdfAsync(int claseId, string? search, string? estado, int? entrenadorId);
 }

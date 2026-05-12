@@ -12,17 +12,20 @@ public class AccountController : Controller
     private readonly IAuthService _authService;
     private readonly IUsuarioService _usuarioService;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
     private readonly ILogger<AccountController> _logger;
 
     public AccountController(
         IAuthService authService,
         IUsuarioService usuarioService,
         IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
         ILogger<AccountController> logger)
     {
         _authService = authService;
         _usuarioService = usuarioService;
         _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
         _logger = logger;
     }
 
@@ -48,7 +51,7 @@ public class AccountController : Controller
 
         if (!loginResult.Success || loginResult.Data == null)
         {
-            if (loginResult.Code == "ACCOUNT_LOCKED")
+            if (loginResult.Code is "ACCOUNT_LOCKED" or "ACCOUNT_BLOCKED")
             {
                 var usuarioBloqueado = loginResult.Data;
                 var token = usuarioBloqueado?.RefreshToken;
@@ -58,17 +61,11 @@ public class AccountController : Controller
 
                 if (!string.IsNullOrWhiteSpace(resetLink) && usuarioBloqueado != null)
                 {
-                    var body = $"""
-                        <p>Hola {usuarioBloqueado.Nombre},</p>
-                        <p>Tu cuenta se ha bloqueado por varios intentos de acceso fallidos.</p>
-                        <p>Para recuperarla, restablece tu contrasena aqui:</p>
-                        <p><a href="{resetLink}">Recuperar cuenta</a></p>
-                        <p>El enlace caduca en 1 hora.</p>
-                        """;
+                    var template = _emailTemplateService.EmailCuentaBloqueada(usuarioBloqueado.Nombre, resetLink);
 
                     try
                     {
-                        await _emailService.SendAsync(usuarioBloqueado.Email, "Cuenta bloqueada - Recuperacion FitControl", body);
+                        await _emailService.SendAsync(usuarioBloqueado.Email, template.Subject, template.HtmlBody);
                     }
                     catch (Exception ex)
                     {
@@ -76,7 +73,9 @@ public class AccountController : Controller
                     }
                 }
 
-                TempData["Warning"] = "Cuenta bloqueada por seguridad. Revisa tu correo para recuperarla.";
+                TempData["Warning"] = loginResult.Code == "ACCOUNT_LOCKED"
+                    ? "Cuenta bloqueada por seguridad. Revisa tu correo para recuperarla."
+                    : "Tu cuenta sigue bloqueada. Te hemos reenviado el correo de recuperacion.";
                 return RedirectToAction(nameof(Login));
             }
 
@@ -121,13 +120,9 @@ public class AccountController : Controller
 
         try
         {
-            var body = $"""
-                <p>Hola {usuario.Nombre},</p>
-                <p>Bienvenido a FitControl Web.</p>
-                <p>Tu cuenta ya esta lista para reservar clases y gestionar tu actividad.</p>
-                """;
+            var template = _emailTemplateService.EmailBienvenida(usuario.Nombre);
 
-            await _emailService.SendAsync(usuario.Email, "Bienvenido a FitControl Web", body);
+            await _emailService.SendAsync(usuario.Email, template.Subject, template.HtmlBody);
         }
         catch (Exception ex)
         {
@@ -179,18 +174,11 @@ public class AccountController : Controller
 
             if (!string.IsNullOrWhiteSpace(resetLink))
             {
-                var body = $"""
-                    <p>Hola {result.Data.Nombre},</p>
-                    <p>Hemos recibido una solicitud para restablecer tu contrasena en FitControl Web.</p>
-                    <p>Pulsa en el siguiente enlace para continuar:</p>
-                    <p><a href="{resetLink}">Restablecer contrasena</a></p>
-                    <p>Este enlace caduca en 1 hora.</p>
-                    <p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
-                    """;
+                var template = _emailTemplateService.EmailRestablecerContrasenya(result.Data.Nombre, resetLink);
 
                 try
                 {
-                    await _emailService.SendAsync(result.Data.Email, "Restablecer contrasena - FitControl Web", body);
+                    await _emailService.SendAsync(result.Data.Email, template.Subject, template.HtmlBody);
                 }
                 catch (Exception ex)
                 {

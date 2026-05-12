@@ -1,22 +1,7 @@
-﻿@model IEnumerable<FitControlWeb.Models.Entities.Suscripcion>
-@using FitControlWeb.ViewModels.Shared
+@model FitControlWeb.ViewModels.Suscripciones.SuscripcionIndexViewModel
 
 @{
     ViewData["Title"] = "Suscripciones";
-
-    var suscripciones = Model?.ToList() ?? new List<FitControlWeb.Models.Entities.Suscripcion>();
-
-    int currentPage = ViewBag.CurrentPage ?? 1;
-    int totalPages = ViewBag.TotalPages ?? 1;
-    int pageSize = ViewBag.PageSize ?? 10;
-    int totalSuscripciones = ViewBag.TotalSuscripciones ?? 0;
-
-    int activasPagina = suscripciones.Count(s => s.Activa == true);
-    int inactivasPagina = suscripciones.Count(s => s.Activa != true);
-    int vencidasPagina = suscripciones.Count(s => s.Activa == true && s.FechaFin < DateTime.Today);
-
-    int startPage = Math.Max(1, currentPage - 2);
-    int endPage = Math.Min(totalPages, currentPage + 2);
 }
 
 @section Styles {
@@ -24,15 +9,14 @@
 }
 
 <div class="page-card">
-
     <div class="page-header flex-wrap gap-3">
         <div>
             <h2 class="page-title">Suscripciones</h2>
-            <p class="text-muted mb-0">Gestión de suscripciones de clientes</p>
+            <p class="text-muted mb-0">Gestion de suscripciones de clientes</p>
         </div>
 
         <a asp-action="Create" class="btn btn-orange">
-            <i class="bi bi-plus-circle me-1"></i> Nueva suscripción
+            <i class="bi bi-plus-circle me-1"></i> Nueva suscripcion
         </a>
     </div>
 
@@ -40,28 +24,28 @@
         <div class="col-md-3">
             <div class="info-box">
                 <span class="info-label">Suscripciones encontradas</span>
-                <p class="info-value mb-0">@totalSuscripciones</p>
+                <p class="info-value mb-0">@Model.TotalSuscripciones</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Activas en página</span>
-                <p class="info-value mb-0">@activasPagina</p>
+                <span class="info-label">Activas en pagina</span>
+                <p class="info-value mb-0">@Model.ActivasPagina</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Inactivas en página</span>
-                <p class="info-value mb-0">@inactivasPagina</p>
+                <span class="info-label">Inactivas en pagina</span>
+                <p class="info-value mb-0">@Model.InactivasPagina</p>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="info-box">
-                <span class="info-label">Vencidas en página</span>
-                <p class="info-value mb-0">@vencidasPagina</p>
+                <span class="info-label">Vencidas en pagina</span>
+                <p class="info-value mb-0">@Model.VencidasPagina</p>
             </div>
         </div>
     </div>
@@ -72,7 +56,7 @@
                 <label class="form-label">Buscar</label>
                 <input type="text"
                        name="search"
-                       value="@ViewBag.Search"
+                       value="@Model.Search"
                        class="form-control"
                        placeholder="Cliente, email o tipo..." />
             </div>
@@ -81,18 +65,18 @@
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
                     <option value="">Todas</option>
-                    <option value="Activa" selected="@(ViewBag.Estado == "Activa")">Activas</option>
-                    <option value="Cancelada" selected="@(ViewBag.Estado == "Cancelada")">Canceladas</option>
-                    <option value="Vencida" selected="@(ViewBag.Estado == "Vencida")">Vencidas</option>
+                    <option value="Activa" selected="@(Model.Estado == "Activa")">Activas</option>
+                    <option value="Cancelada" selected="@(Model.Estado == "Cancelada")">Canceladas</option>
+                    <option value="Vencida" selected="@(Model.Estado == "Vencida")">Vencidas</option>
                 </select>
             </div>
 
             <div class="col-md-2">
                 <label class="form-label">Ver</label>
                 <select name="pageSize" class="form-select">
-                    <option value="10" selected="@(pageSize == 10)">10</option>
-                    <option value="25" selected="@(pageSize == 25)">25</option>
-                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
                 </select>
             </div>
 
@@ -106,28 +90,12 @@
                 </a>
             </div>
         </form>
+
         <br />
-
-        @{
-            var exportModel = new ExportButtonsViewModel
-            {
-                Controller = "Suscripciones",
-                ExcelAction = "ExportExcel",
-                CsvAction = "ExportCsv",
-                PdfAction = "ExportPdf",
-                RouteValues = new Dictionary<string, string?>
-                {
-                    { "search", ViewBag.Search?.ToString() },
-                    { "estado", ViewBag.Estado?.ToString() }
-                }
-            };
-        }
-
-        <partial name="_ExportButtons" model="exportModel" />
-
+        <partial name="_ExportButtons" model="Model.ExportButtons" />
     </div>
 
-    @if (!suscripciones.Any())
+    @if (!Model.Suscripciones.Any())
     {
         <div class="alert alert-info">
             No hay suscripciones con los filtros seleccionados.
@@ -151,35 +119,27 @@
                 </thead>
 
                 <tbody>
-                    @foreach (var s in suscripciones)
+                    @foreach (var suscripcion in Model.Suscripciones)
                     {
-                        bool vencida = s.FechaFin < DateTime.Today;
+                        bool vencida = suscripcion.FechaFin < DateTime.Today;
 
                         <tr>
                             <td>
-                                @(s.Usuario != null
-                                    ? $"{s.Usuario.Nombre} {s.Usuario.Apellidos}"
+                                @(suscripcion.Usuario != null
+                                    ? $"{suscripcion.Usuario.Nombre} {suscripcion.Usuario.Apellidos}"
                                     : "Usuario no disponible")
                             </td>
-
-                            <td>@(s.Usuario?.Email ?? "Sin email")</td>
-
-                            <td>@(s.TipoSuscripcion?.Nombre ?? "Sin tipo")</td>
-
-                            <td>@s.FechaInicio.ToString("dd/MM/yyyy")</td>
-
-                            <td>@s.FechaFin.ToString("dd/MM/yyyy")</td>
-
+                            <td>@(suscripcion.Usuario?.Email ?? "Sin email")</td>
+                            <td>@(suscripcion.TipoSuscripcion?.Nombre ?? "Sin tipo")</td>
+                            <td>@suscripcion.FechaInicio.ToString("dd/MM/yyyy")</td>
+                            <td>@suscripcion.FechaFin.ToString("dd/MM/yyyy")</td>
+                            <td>@(suscripcion.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") €</td>
                             <td>
-                                @(s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") €
-                            </td>
-
-                            <td>
-                                @if (s.Activa == true && !vencida)
+                                @if (suscripcion.Activa == true && !vencida)
                                 {
                                     <span class="badge bg-success">Activa</span>
                                 }
-                                else if (s.Activa == true && vencida)
+                                else if (suscripcion.Activa == true && vencida)
                                 {
                                     <span class="badge bg-warning text-dark">Vencida</span>
                                 }
@@ -188,38 +148,37 @@
                                     <span class="badge bg-danger">Cancelada</span>
                                 }
                             </td>
-
                             <td class="text-end">
                                 <div class="btn-group">
                                     <a asp-action="Details"
-                                           asp-route-id="@s.Id"
-                                           class="btn btn-sm btn-outline-dark"
-                                           title="Ver">
+                                       asp-route-id="@suscripcion.Id"
+                                       class="btn btn-sm btn-outline-dark"
+                                       title="Ver">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
                                     <a asp-action="Edit"
-                                           asp-route-id="@s.Id"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="Editar">
+                                       asp-route-id="@suscripcion.Id"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
 
-                                    @if (s.Usuario != null)
+                                    @if (suscripcion.Usuario != null)
                                     {
                                         <a asp-controller="Usuarios"
-                                               asp-action="Details"
-                                               asp-route-id="@s.UsuarioId"
-                                               class="btn btn-sm btn-outline-secondary"
-                                               title="Ver cliente">
+                                           asp-action="Details"
+                                           asp-route-id="@suscripcion.UsuarioId"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="Ver cliente">
                                             <i class="bi bi-person"></i>
                                         </a>
                                     }
 
-                                    @if (s.Activa == true)
+                                    @if (suscripcion.Activa == true)
                                     {
                                         <form asp-action="Cancelar"
-                                              asp-route-id="@s.Id"
+                                              asp-route-id="@suscripcion.Id"
                                               method="post"
                                               class="d-inline form-cancelar">
                                             @Html.AntiForgeryToken()
@@ -227,7 +186,7 @@
 
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-danger btn-cancelar"
-                                                    title="Cancelar suscripción">
+                                                    title="Cancelar suscripcion">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </form>
@@ -235,7 +194,7 @@
                                     else
                                     {
                                         <form asp-action="Reactivar"
-                                              asp-route-id="@s.Id"
+                                              asp-route-id="@suscripcion.Id"
                                               method="post"
                                               class="d-inline form-reactivar">
                                             @Html.AntiForgeryToken()
@@ -243,7 +202,7 @@
 
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-success btn-reactivar"
-                                                    title="Reactivar suscripción">
+                                                    title="Reactivar suscripcion">
                                                 <i class="bi bi-arrow-clockwise"></i>
                                             </button>
                                         </form>
@@ -256,75 +215,72 @@
             </table>
         </div>
 
-        @if (totalPages > 1)
+        @if (Model.TotalPages > 1)
         {
             <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
-
                 <span class="text-muted small">
-                    Página @currentPage de @totalPages
+                    Pagina @Model.CurrentPage de @Model.TotalPages
                 </span>
 
                 <nav>
                     <ul class="pagination mb-0">
-
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="1"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@(currentPage - 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="Index"
+                               asp-route-page="@(Model.CurrentPage - 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
 
-                        @for (int i = startPage; i <= endPage; i++)
+                        @for (int i = Model.StartPage; i <= Model.EndPage; i++)
                         {
-                            <li class="page-item @(i == currentPage ? "active" : "")">
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
                                 <a class="page-link"
-                                       asp-action="Index"
-                                       asp-route-page="@i"
-                                       asp-route-pageSize="@pageSize"
-                                       asp-route-search="@ViewBag.Search"
-                                       asp-route-estado="@ViewBag.Estado">
+                                   asp-action="Index"
+                                   asp-route-page="@i"
+                                   asp-route-pageSize="@Model.PageSize"
+                                   asp-route-search="@Model.Search"
+                                   asp-route-estado="@Model.Estado">
                                     @i
                                 </a>
                             </li>
                         }
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@(currentPage + 1)"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="Index"
+                               asp-route-page="@(Model.CurrentPage + 1)"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
 
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                             <a class="page-link"
-                                   asp-action="Index"
-                                   asp-route-page="@totalPages"
-                                   asp-route-pageSize="@pageSize"
-                                   asp-route-search="@ViewBag.Search"
-                                   asp-route-estado="@ViewBag.Estado">
+                               asp-action="Index"
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.Search"
+                               asp-route-estado="@Model.Estado">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>
-
                     </ul>
                 </nav>
             </div>
@@ -339,13 +295,13 @@
                 const form = this.closest('form');
 
                 Swal.fire({
-                    title: '¿Cancelar suscripción?',
-                    text: 'La suscripción quedará cancelada y dejará de estar activa.',
+                    title: '¿Cancelar suscripcion?',
+                    text: 'La suscripcion quedara cancelada y dejara de estar activa.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, cancelar',
+                    confirmButtonText: 'Si, cancelar',
                     cancelButtonText: 'Volver'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -360,13 +316,13 @@
                 const form = this.closest('form');
 
                 Swal.fire({
-                    title: '¿Reactivar suscripción?',
-                    text: 'Solo se reactivará si el cliente no tiene otra suscripción activa y no está vencida.',
+                    title: '¿Reactivar suscripcion?',
+                    text: 'Solo se reactivara si el cliente no tiene otra suscripcion activa y no esta vencida.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#198754',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, reactivar',
+                    confirmButtonText: 'Si, reactivar',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {

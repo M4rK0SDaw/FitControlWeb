@@ -1,30 +1,8 @@
-﻿//using FitControlWeb.Models.Entities;
-
-//namespace FitControlWeb.Services.Interfaces;
-
-//public interface IUsuarioService
-//{
-//    Task<List<Usuario>> GetAllAsync();
-//    Task<Usuario?> GetByIdAsync(int id);
-//    Task<Usuario?> GetByEmailAsync(string email);
-
-//    Task CreateAsync(Usuario usuario);
-//    Task UpdateAsync(Usuario usuario);
-
-//    Task SoftDeleteAsync(int id);
-//    Task ActivarAsync(int id);
-
-//    Task<bool> EmailExistsAsync(string email, int? excludeUserId = null); // Task<bool> EmailExistsAsync(string email);
-
-//    Task<List<Usuario>> GetFiltradosAsync(string? search, int? rolId, bool? activo, int page, int pageSize);
-//    Task<int> CountFiltradosAsync(string? search, int? rolId, bool? activo);
-
-
-//}
-
 using FitControlWeb.Helpers;
 using FitControlWeb.Models.Entities;
 using FitControlWeb.ViewModels;
+using FitControlWeb.ViewModels.Shared;
+using FitControlWeb.ViewModels.Usuarios;
 
 namespace FitControlWeb.Services.Interfaces;
 
@@ -44,8 +22,15 @@ public interface IUsuarioService
     Task<List<Usuario>> GetFiltradosAsync(string? search, int? rolId, bool? activo, int page, int pageSize);
     Task<int> CountFiltradosAsync(string? search, int? rolId, bool? activo);
     Task<List<Rol>> GetRolesAsync();
-    Task<(int TotalUsuarios, int UsuariosActivos, int UsuariosInactivos, int TotalClientes, int TotalEntrenadores)> GetKpisAsync();
+    Task<(int TotalUsuarios, int UsuariosActivos, int UsuariosInactivos, int TotalClientes, int TotalEntrenadores, int TotalAdministradores, int NuevosEsteMes)> GetKpisAsync();
     Task<ServiceResult<Usuario>> CreateFromViewModelAsync(UsuarioCreateViewModel model, IFormFile? foto);
     Task<ServiceResult> UpdateFromViewModelAsync(UsuarioEditViewModel model);
     Task<ServiceResult> GuardarFotoAsync(int id, IFormFile? foto);
+
+    Task<UsuarioIndexViewModel> GetIndexViewModelAsync(string? search, int? rolId, bool? activo, int page, int pageSize);
+    Task<UsuarioCreateViewModel> GetCreateViewModelAsync();
+    Task<UsuarioEditViewModel?> GetEditViewModelAsync(int id);
+    Task<FileContentViewModel> ExportCsvAsync(string? search, int? rolId, bool? activo);
+    Task<FileContentViewModel> ExportExcelAsync(string? search, int? rolId, bool? activo);
+    Task<FileContentViewModel> ExportPdfAsync(string? search, int? rolId, bool? activo);
 }

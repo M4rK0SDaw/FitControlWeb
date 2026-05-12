@@ -1,5 +1,3 @@
-using FitControlWeb.Helpers;
-using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,34 +16,17 @@ public class ReservasController : Controller
     }
 
     [Authorize(Roles = "Administrador,Entrenador")]
-    public async Task<IActionResult> Index(
-        string? search,
-        string? estado,
-        int page = 1,
-        int pageSize = 10)
+    public async Task<IActionResult> Index(string? search, string? estado, int page = 1, int pageSize = 10)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
-
         var entrenadorId = User.IsInRole("Entrenador") ? GetUsuarioId() : (int?)null;
-        var reservas = await _reservaService.GetFiltradasAsync(search, estado, entrenadorId, page, pageSize);
-        var totalItems = await _reservaService.CountFiltradasAsync(search, estado, entrenadorId);
-
-        ViewBag.Search = search;
-        ViewBag.Estado = estado;
-        ViewBag.CurrentPage = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-        ViewBag.TotalReservas = totalItems;
-        ViewBag.PlazasCanceladas = await _reservaService.CountCanceladasAsync(entrenadorId);
-
-        return View(reservas);
+        var vm = await _reservaService.GetIndexViewModelAsync(search, estado, page, pageSize, entrenadorId);
+        return View(vm);
     }
 
     [Authorize(Roles = "Cliente")]
     public async Task<IActionResult> MisReservas()
     {
-        var reservas = await _reservaService.GetByUsuarioAsync(GetUsuarioId());
+        var reservas = await _reservaService.GetByUsuarioAsync(GetUsuarioId()!.Value);
         return View(reservas);
     }
 
@@ -54,8 +35,7 @@ public class ReservasController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reservar(int claseId, string? returnUrl)
     {
-        var result = await _reservaService.CrearAsync(GetUsuarioId(), claseId);
-
+        var result = await _reservaService.CrearAsync(GetUsuarioId()!.Value, claseId);
         TempData[result.Success ? "Success" : "Error"] = result.Message;
 
         if (result.Success)
@@ -78,106 +58,62 @@ public class ReservasController : Controller
             return Forbid();
 
         var result = await _reservaService.CancelarAsync(id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectToAction(nameof(MisReservas));
     }
 
     [Authorize(Roles = "Administrador,Entrenador")]
-    public async Task<IActionResult> PorClase(
-        int claseId,
-        string? search,
-        string? estado,
-        int page = 1,
-        int pageSize = 10)
+    public async Task<IActionResult> PorClase(int claseId, string? search, string? estado, int page = 1, int pageSize = 10)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
-
         var entrenadorId = User.IsInRole("Entrenador") ? GetUsuarioId() : (int?)null;
-        var clase = await _reservaService.GetClaseConReservasAsync(claseId);
+        var result = await _reservaService.GetPorClaseViewModelAsync(claseId, search, estado, page, pageSize, entrenadorId);
 
-        if (clase == null)
+        if (result.Code == "NOT_FOUND")
             return NotFound();
 
-        if (!await _reservaService.PuedeGestionarClaseAsync(claseId, entrenadorId))
+        if (result.Code == "FORBID")
             return Forbid();
 
-        var reservas = await _reservaService.GetByClaseFiltradoAsync(claseId, search, estado, page, pageSize);
-        var totalItems = await _reservaService.CountByClaseFiltradoAsync(claseId, search, estado);
-
-        CargarViewBagClase(clase, search, estado, page, pageSize, totalItems);
-
-        return View(reservas);
+        return View(result.Data);
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasCsv(int claseId, string? search, string? estado)
     {
-        var forbid = await ValidarAccesoClaseAsync(claseId);
-        if (forbid != null) return forbid;
+        var result = await _reservaService.ExportReservasCsvAsync(claseId, search, estado, null);
 
-        var reservas = await _reservaService.GetByClaseExportAsync(claseId, search, estado);
-        var headers = new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" };
+        if (result.Code == "FORBID")
+            return Forbid();
 
-        var bytes = ExportHelper.ToCsv(reservas, headers, ReservaExportRow);
-
-        return File(bytes, "text/csv", "reservas-clase.csv");
+        return File(result.Data!.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasExcel(int claseId, string? search, string? estado)
     {
-        var forbid = await ValidarAccesoClaseAsync(claseId);
-        if (forbid != null) return forbid;
+        var result = await _reservaService.ExportReservasExcelAsync(claseId, search, estado, null);
 
-        var reservas = await _reservaService.GetByClaseExportAsync(claseId, search, estado);
-        var primera = reservas.FirstOrDefault();
+        if (result.Code == "FORBID")
+            return Forbid();
 
-        var subtitle = primera?.Clase != null
-            ? $"{primera.Clase.Nombre} - {primera.Clase.Fecha:dd/MM/yyyy} - {primera.Clase.HoraInicio} a {primera.Clase.HoraFin}"
-            : "Reservas de la clase";
-
-        var bytes = ExportHelper.ToExcel(
-            reservas,
-            "Reservas",
-            "Reservas por clase",
-            subtitle,
-            GetFiltros(search, estado),
-            GetResumen(reservas),
-            new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" },
-            r => ReservaExportRow(r).Cast<object>().ToArray());
-
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "reservas-clase.xlsx");
+        return File(result.Data!.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ExportReservasPdf(int claseId, string? search, string? estado)
     {
-        try
+        var result = await _reservaService.ExportReservasPdfAsync(claseId, search, estado, null);
+
+        if (result.Code == "FORBID")
+            return Forbid();
+
+        if (!result.Success || result.Data == null)
         {
-            var forbid = await ValidarAccesoClaseAsync(claseId);
-            if (forbid != null) return forbid;
-
-            var reservas = await _reservaService.GetByClaseExportAsync(claseId, search, estado);
-
-            var bytes = ExportHelper.ToPdf(
-                reservas,
-                "Reservas por clase",
-                "Listado de reservas filtradas",
-                GetFiltros(search, estado),
-                GetResumen(reservas),
-                new[] { "Cliente", "Email", "Clase", "Fecha reserva", "Estado" },
-                ReservaExportRow);
-
-            return File(bytes, "application/pdf", "reservas-clase.pdf");
-        }
-        catch (Exception ex)
-        {
-            TempData["Error"] = $"Error al generar PDF: {ex.Message}";
+            TempData["Error"] = result.Message;
             return RedirectToAction(nameof(PorClase), new { claseId, search, estado });
         }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Administrador,Entrenador")]
@@ -189,9 +125,7 @@ public class ReservasController : Controller
         if (forbidden != null) return forbidden;
 
         var result = await _reservaService.CancelarAsync(id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectLocalOrIndex(returnUrl);
     }
 
@@ -204,20 +138,8 @@ public class ReservasController : Controller
         if (forbidden != null) return forbidden;
 
         var result = await _reservaService.ReactivarAsync(id);
-
         TempData[result.Success ? "Success" : "Error"] = result.Message;
-
         return RedirectLocalOrIndex(returnUrl);
-    }
-
-    private async Task<IActionResult?> ValidarAccesoClaseAsync(int claseId)
-    {
-        var entrenadorId = User.IsInRole("Entrenador") ? GetUsuarioId() : (int?)null;
-
-        if (!await _reservaService.PuedeGestionarClaseAsync(claseId, entrenadorId))
-            return Forbid();
-
-        return null;
     }
 
     private async Task<IActionResult?> ValidarAccesoReservaAsync(int reservaId)
@@ -235,58 +157,11 @@ public class ReservasController : Controller
         return null;
     }
 
-    private void CargarViewBagClase(Clase clase, string? search, string? estado, int page, int pageSize, int totalItems)
+    private int? GetUsuarioId()
     {
-        ViewBag.ClaseId = clase.Id;
-        ViewBag.Search = search;
-        ViewBag.Estado = estado;
-        ViewBag.CurrentPage = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-        ViewBag.TotalReservas = totalItems;
-        ViewBag.ClaseNombre = clase.Nombre;
-        ViewBag.ClaseFecha = clase.Fecha.ToDateTime(TimeOnly.MinValue);
-        ViewBag.ClaseHoraInicio = clase.HoraInicio;
-        ViewBag.ClaseHoraFin = clase.HoraFin;
-        ViewBag.CapacidadMaxima = clase.CapacidadMaxima ?? 0;
-        ViewBag.PlazasOcupadas = clase.Reservas.Count(r => r.Activo == true);
-        ViewBag.PlazasCanceladas = clase.Reservas.Count(r => r.Activo == false);
-    }
-
-    private static string[] ReservaExportRow(Reserva r)
-    {
-        return new[]
-        {
-            $"{r.Usuario?.Nombre ?? ""} {r.Usuario?.Apellidos ?? ""}",
-            r.Usuario?.Email ?? "",
-            r.Clase?.Nombre ?? "",
-            r.FechaReserva?.ToString("dd/MM/yyyy HH:mm") ?? "",
-            r.EstadoReserva?.Nombre ?? ""
-        };
-    }
-
-    private static string[] GetFiltros(string? search, string? estado)
-    {
-        return new[]
-        {
-            $"Búsqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"Estado: {(string.IsNullOrWhiteSpace(estado) ? "Todos" : estado)}"
-        };
-    }
-
-    private static List<ReportSummaryItem> GetResumen(List<Reserva> reservas)
-    {
-        return new()
-        {
-            new() { Label = "Total", Value = reservas.Count.ToString() },
-            new() { Label = "Activas", Value = reservas.Count(r => r.Activo == true).ToString() },
-            new() { Label = "Canceladas", Value = reservas.Count(r => r.Activo != true).ToString() }
-        };
-    }
-
-    private int GetUsuarioId()
-    {
-        return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId)
+            ? usuarioId
+            : null;
     }
 
     private IActionResult RedirectLocalOrIndex(string? returnUrl)

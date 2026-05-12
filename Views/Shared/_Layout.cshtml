@@ -102,8 +102,12 @@
                 <nav class="sidebar-nav">
                     @if (User.IsInRole("Administrador"))
                     {
-                        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link @IsActive("Dashboard")" title="Dashboard">
+                        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link @IsActive("Dashboard", "Index")" title="Dashboard">
                             <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+                        </a>
+
+                        <a asp-controller="Dashboard" asp-action="Perfil" class="sidebar-link @IsActive("Dashboard", "Perfil")" title="Mi perfil">
+                            <i class="bi bi-person-badge"></i><span>Mi perfil</span>
                         </a>
 
                         <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link @IsActive("Usuarios")" title="Usuarios">
@@ -166,7 +170,7 @@
 
                     @if (User.IsInRole("Entrenador"))
                     {
-                        <a asp-controller="EntrenadorDashboard" asp-action="Index" class="sidebar-link @IsActive("EntrenadorDashboard")" title="Mi panel">
+                        <a asp-controller="EntrenadorDashboard" asp-action="Index" class="sidebar-link @IsActive("EntrenadorDashboard", "Index")" title="Mi panel">
                             <i class="bi bi-clipboard2-pulse"></i><span>Mi panel</span>
                         </a>
 

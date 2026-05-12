@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
 
 namespace FitControlWeb.ViewModels;
@@ -14,23 +15,23 @@ public class UsuarioCreateViewModel
     public string Apellidos { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El email es obligatorio.")]
-    [EmailAddress(ErrorMessage = "Introduce un email válido.")]
+    [EmailAddress(ErrorMessage = "Introduce un email valido.")]
     [StringLength(150, ErrorMessage = "El email no puede superar los 150 caracteres.")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(20, ErrorMessage = "El teléfono no puede superar los 20 caracteres.")]
-    [RegularExpression(@"^[0-9+\s]{6,20}$", ErrorMessage = "El teléfono solo puede contener números, espacios o +.")]
+    [StringLength(20, ErrorMessage = "El telefono no puede superar los 20 caracteres.")]
+    [RegularExpression(@"^[0-9+\s]{6,20}$", ErrorMessage = "El telefono solo puede contener numeros, espacios o +.")]
     public string? Telefono { get; set; }
 
     [Required(ErrorMessage = "Debes seleccionar un rol.")]
-    [Range(1, int.MaxValue, ErrorMessage = "Debes seleccionar un rol válido.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Debes seleccionar un rol valido.")]
     public int RolId { get; set; }
 
-    [Required(ErrorMessage = "La contraseña es obligatoria.")]
-    [StringLength(100, MinimumLength = 6, ErrorMessage = "La contraseña debe tener entre 6 y 100 caracteres.")]
+    [Required(ErrorMessage = "La contrasena es obligatoria.")]
+    [StringLength(100, MinimumLength = 6, ErrorMessage = "La contrasena debe tener entre 6 y 100 caracteres.")]
     [DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
 
     public IFormFile? Foto { get; set; }
-
+    public List<SelectListItem> Roles { get; set; } = new();
 }

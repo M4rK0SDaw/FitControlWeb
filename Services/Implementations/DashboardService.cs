@@ -1,6 +1,9 @@
 using FitControlWeb.Data;
+using FitControlWeb.Helpers;
 using FitControlWeb.Services.Interfaces;
+using FitControlWeb.ViewModels;
 using FitControlWeb.ViewModels.Dashboard;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace FitControlWeb.Services.Implementations;
@@ -8,10 +11,12 @@ namespace FitControlWeb.Services.Implementations;
 public class DashboardService : IDashboardService
 {
     private readonly FitControlDbContext _context;
+    private readonly IProfilePhotoService _profilePhotoService;
 
-    public DashboardService(FitControlDbContext context)
+    public DashboardService(FitControlDbContext context, IProfilePhotoService profilePhotoService)
     {
         _context = context;
+        _profilePhotoService = profilePhotoService;
     }
 
     public async Task<DashboardViewModel> GetAdminDashboardAsync()
@@ -196,5 +201,51 @@ public class DashboardService : IDashboardService
             UltimasFacturas = ultimasFacturas,
             UltimosPagos = ultimosPagos
         };
+    }
+
+    public async Task<ClientePerfilViewModel?> GetPerfilAsync(int usuarioId)
+    {
+        var usuario = await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == usuarioId);
+
+        if (usuario == null)
+            return null;
+
+        return new ClientePerfilViewModel
+        {
+            Id = usuario.Id,
+            Nombre = usuario.Nombre,
+            Apellidos = usuario.Apellidos,
+            Email = usuario.Email,
+            Telefono = usuario.Telefono
+        };
+    }
+
+    public async Task<ServiceResult> UpdatePerfilAsync(int usuarioId, ClientePerfilViewModel model, IFormFile? foto)
+    {
+        if (model.Id != usuarioId)
+            return ServiceResult.Fail("No puedes modificar el perfil de otro usuario.", "FORBID");
+
+        var usuario = await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == usuarioId);
+
+        if (usuario == null)
+            return ServiceResult.Fail("El usuario no existe.", "NOT_FOUND");
+
+        usuario.Nombre = model.Nombre.Trim();
+        usuario.Apellidos = model.Apellidos.Trim();
+        usuario.Telefono = model.Telefono;
+
+        if (!string.IsNullOrWhiteSpace(model.NuevaPassword))
+            usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NuevaPassword);
+
+        var fotoResult = await _profilePhotoService.GuardarFotoUsuarioAsync(usuario.Id, foto);
+
+        if (!fotoResult.Success)
+            return fotoResult;
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult.Ok("Perfil actualizado correctamente.");
     }
 }

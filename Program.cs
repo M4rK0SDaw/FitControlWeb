@@ -2,6 +2,7 @@ using FitControlWeb.Data;
 using FitControlWeb.Hubs;
 using FitControlWeb.Services.Implementations;
 using FitControlWeb.Services.Interfaces;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +11,21 @@ using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionPath);
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("FitControlWeb");
 
 builder.Services.AddDbContext<FitControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("FitControlDB")));
@@ -83,6 +94,7 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ITipoSuscripcionService, TipoSuscripcionService>();
 builder.Services.AddScoped<IMetodoPagoService, MetodoPagoService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
 
 
