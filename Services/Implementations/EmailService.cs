@@ -21,6 +21,22 @@ public class EmailService : IEmailService
 
     public async Task SendAsync(string to, string subject, string htmlBody)
     {
+        await SendInternalAsync(to, subject, htmlBody, null, null, null);
+    }
+
+    public async Task SendWithAttachmentAsync(string to, string subject, string htmlBody, byte[] attachmentContent, string attachmentFileName, string contentType)
+    {
+        await SendInternalAsync(to, subject, htmlBody, attachmentContent, attachmentFileName, contentType);
+    }
+
+    private async Task SendInternalAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        byte[]? attachmentContent,
+        string? attachmentFileName,
+        string? contentType)
+    {
         var from = _configuration["Email:From"];
         var user = _configuration["Email:User"];
         var password = _configuration["Email:Password"];
@@ -50,6 +66,16 @@ public class EmailService : IEmailService
         };
         message.To.Add(to);
 
+        MemoryStream? attachmentStream = null;
+        if (attachmentContent != null &&
+            attachmentContent.Length > 0 &&
+            !string.IsNullOrWhiteSpace(attachmentFileName) &&
+            !string.IsNullOrWhiteSpace(contentType))
+        {
+            attachmentStream = new MemoryStream(attachmentContent);
+            message.Attachments.Add(new Attachment(attachmentStream, attachmentFileName, contentType));
+        }
+
         using var client = new SmtpClient(smtpHost, smtpPort)
         {
             EnableSsl = true,
@@ -57,7 +83,14 @@ public class EmailService : IEmailService
         };
 
         _logger.LogInformation("Enviando email a {Recipient} con asunto {Subject}", to, subject);
-        await client.SendMailAsync(message);
+        try
+        {
+            await client.SendMailAsync(message);
+        }
+        finally
+        {
+            attachmentStream?.Dispose();
+        }
     }
 
     private static string BuildEmailLayout(string subject, string contentHtml)

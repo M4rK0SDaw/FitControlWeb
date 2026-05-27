@@ -21,24 +21,35 @@ public class SuscripcionService : ISuscripcionService
 
     public async Task<List<Suscripcion>> GetFiltradasAsync(string? search, string? estado, int page, int pageSize)
     {
-        return await QuerySuscripciones(search, estado)
+        var suscripciones = await QuerySuscripciones(search)
             .OrderByDescending(s => s.FechaInicio)
+            .ToListAsync();
+
+        await MarcarFacturasPendientesAsync(suscripciones);
+        return AplicarFiltroEstado(suscripciones, estado)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<int> CountFiltradasAsync(string? search, string? estado)
     {
-        return await QuerySuscripciones(search, estado).CountAsync();
+        var suscripciones = await QuerySuscripciones(search).ToListAsync();
+        await MarcarFacturasPendientesAsync(suscripciones);
+        return AplicarFiltroEstado(suscripciones, estado).Count();
     }
 
     public async Task<Suscripcion?> GetByIdAsync(int id)
     {
-        return await _context.Suscripciones
+        var suscripcion = await _context.Suscripciones
             .Include(s => s.Usuario)
             .Include(s => s.TipoSuscripcion)
             .FirstOrDefaultAsync(s => s.Id == id);
+
+        if (suscripcion != null)
+            await MarcarFacturasPendientesAsync(new List<Suscripcion> { suscripcion });
+
+        return suscripcion;
     }
 
     public async Task<bool> UsuarioTieneSuscripcionActivaAsync(int usuarioId, int? excludeId = null)
@@ -50,6 +61,37 @@ public class SuscripcionService : ISuscripcionService
             s.Activa == true &&
             s.FechaFin >= hoy &&
             (!excludeId.HasValue || s.Id != excludeId.Value));
+    }
+
+    private async Task<bool> UsuarioTieneSuscripcionEnCursoAsync(int usuarioId)
+    {
+        var hoy = DateTime.Today;
+
+        if (await _context.Suscripciones.AnyAsync(s =>
+            s.UsuarioId == usuarioId &&
+            s.FechaFin >= hoy &&
+            s.Activa == true))
+        {
+            return true;
+        }
+
+        var suscripcionesPendientes = await _context.Suscripciones
+            .Where(s => s.UsuarioId == usuarioId && s.FechaFin >= hoy && s.Activa != true)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        foreach (var suscripcionId in suscripcionesPendientes)
+        {
+            if (await _context.Facturas.AnyAsync(f =>
+                f.Activo == true &&
+                f.Pagada != true &&
+                f.NumeroFactura.EndsWith($"-SUS-{suscripcionId}")))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public async Task<ServiceResult> CreateAsync(Suscripcion suscripcion)
@@ -149,8 +191,8 @@ public class SuscripcionService : ISuscripcionService
         if (usuario == null || usuario.Rol?.Nombre != "Cliente")
             return ServiceResult<SuscripcionCreadaResultViewModel>.Fail("Debes seleccionar un cliente valido.", "USUARIO_NO_VALIDO");
 
-        if (await UsuarioTieneSuscripcionActivaAsync(model.UsuarioId))
-            return ServiceResult<SuscripcionCreadaResultViewModel>.Fail("El usuario ya tiene una suscripcion activa.", "SUSCRIPCION_DUPLICADA");
+        if (await UsuarioTieneSuscripcionEnCursoAsync(model.UsuarioId))
+            return ServiceResult<SuscripcionCreadaResultViewModel>.Fail("El usuario ya tiene una suscripcion activa o pendiente de pago.", "SUSCRIPCION_DUPLICADA");
 
         var suscripcion = new Suscripcion
         {
@@ -158,7 +200,7 @@ public class SuscripcionService : ISuscripcionService
             TipoSuscripcionId = model.TipoSuscripcionId,
             FechaInicio = model.FechaInicio.Date,
             FechaFin = model.FechaInicio.Date.AddDays(tipo.DuracionDias),
-            Activa = true
+            Activa = false
         };
 
         var tipoFactura = await _context.TipoFacturas
@@ -219,6 +261,22 @@ public class SuscripcionService : ISuscripcionService
         if (suscripcion == null)
             return ServiceResult.Fail("La suscripcion no existe.", "SUSCRIPCION_NO_EXISTE");
 
+        var tieneFactura = await _context.Facturas.AnyAsync(f =>
+            f.Activo == true &&
+            f.NumeroFactura.EndsWith($"-SUS-{suscripcion.Id}"));
+
+        if (tieneFactura &&
+            (
+                suscripcion.UsuarioId != model.UsuarioId ||
+                suscripcion.TipoSuscripcionId != model.TipoSuscripcionId ||
+                suscripcion.FechaInicio.Date != model.FechaInicio.Date
+            ))
+        {
+            return ServiceResult.Fail(
+                "Esta suscripcion ya tiene factura generada. No se pueden modificar cliente, plan o fechas para evitar descuadres de facturacion.",
+                "SUSCRIPCION_FACTURADA");
+        }
+
         var tipo = await _context.TipoSuscripciones
             .FirstOrDefaultAsync(t => t.Id == model.TipoSuscripcionId && t.Activo == true);
 
@@ -270,7 +328,7 @@ public class SuscripcionService : ISuscripcionService
             TotalPages = (int)Math.Ceiling((double)totalItems / pageSize),
             TotalSuscripciones = totalItems,
             ActivasPagina = suscripciones.Count(s => s.Activa == true),
-            InactivasPagina = suscripciones.Count(s => s.Activa != true),
+            InactivasPagina = suscripciones.Count(s => s.Activa != true && !s.TieneFacturaPendiente),
             VencidasPagina = suscripciones.Count(s => s.Activa == true && s.FechaFin < DateTime.Today)
         };
     }
@@ -321,7 +379,7 @@ public class SuscripcionService : ISuscripcionService
         {
             Content = ExportHelper.ToCsv(suscripciones, headers, SuscripcionExportRow),
             ContentType = "text/csv",
-            FileName = "suscripciones.csv"
+            FileName = ExportFileNameHelper.Build("suscripciones", "csv")
         };
     }
 
@@ -348,10 +406,10 @@ public class SuscripcionService : ISuscripcionService
                     s.TipoSuscripcion?.Precio ?? 0,
                     s.FechaInicio.ToString("dd/MM/yyyy"),
                     s.FechaFin.ToString("dd/MM/yyyy"),
-                    s.Activa == true ? "Activa" : "Cancelada"
+                    EstadoSuscripcion(s)
                 }),
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            FileName = "suscripciones.xlsx"
+            FileName = ExportFileNameHelper.Build("suscripciones", "xlsx")
         };
     }
 
@@ -376,14 +434,14 @@ public class SuscripcionService : ISuscripcionService
                     $"{s.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00"} EUR",
                     s.FechaInicio.ToString("dd/MM/yyyy"),
                     s.FechaFin.ToString("dd/MM/yyyy"),
-                    s.Activa == true ? "Activa" : "Cancelada"
+                    EstadoSuscripcion(s)
                 }),
             ContentType = "application/pdf",
-            FileName = "suscripciones.pdf"
+            FileName = ExportFileNameHelper.Build("suscripciones", "pdf")
         };
     }
 
-    private IQueryable<Suscripcion> QuerySuscripciones(string? search, string? estado)
+    private IQueryable<Suscripcion> QuerySuscripciones(string? search)
     {
         var query = _context.Suscripciones
             .Include(s => s.Usuario)
@@ -392,26 +450,42 @@ public class SuscripcionService : ISuscripcionService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
+            var term = search.Trim();
             query = query.Where(s =>
-                s.Usuario.Nombre.Contains(search) ||
-                s.Usuario.Apellidos.Contains(search) ||
-                s.Usuario.Email.Contains(search) ||
-                s.TipoSuscripcion.Nombre.Contains(search));
-        }
-
-        if (!string.IsNullOrWhiteSpace(estado))
-        {
-            if (estado == "Activa")
-                query = query.Where(s => s.Activa == true);
-
-            if (estado == "Cancelada")
-                query = query.Where(s => s.Activa != true);
-
-            if (estado == "Vencida")
-                query = query.Where(s => s.Activa == true && s.FechaFin < DateTime.Today);
+                s.Usuario.Nombre.Contains(term) ||
+                s.Usuario.Apellidos.Contains(term) ||
+                (s.Usuario.Nombre + " " + s.Usuario.Apellidos).Contains(term) ||
+                s.Usuario.Email.Contains(term) ||
+                s.TipoSuscripcion.Nombre.Contains(term));
         }
 
         return query;
+    }
+
+    private static IEnumerable<Suscripcion> AplicarFiltroEstado(IEnumerable<Suscripcion> suscripciones, string? estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+            return suscripciones;
+
+        return estado switch
+        {
+            "Activa" => suscripciones.Where(s => s.Activa == true && s.FechaFin >= DateTime.Today),
+            "Pendiente" => suscripciones.Where(s => s.TieneFacturaPendiente),
+            "Cancelada" => suscripciones.Where(s => s.Activa != true && !s.TieneFacturaPendiente),
+            "Vencida" => suscripciones.Where(s => s.Activa == true && s.FechaFin < DateTime.Today),
+            _ => suscripciones
+        };
+    }
+
+    private async Task MarcarFacturasPendientesAsync(List<Suscripcion> suscripciones)
+    {
+        foreach (var suscripcion in suscripciones)
+        {
+            suscripcion.TieneFacturaPendiente = await _context.Facturas.AnyAsync(f =>
+                f.Activo == true &&
+                f.Pagada != true &&
+                f.NumeroFactura.EndsWith($"-SUS-{suscripcion.Id}"));
+        }
     }
 
     private async Task<List<SelectListItem>> BuildUsuariosSelectListAsync(int? selectedId = null)
@@ -449,8 +523,19 @@ public class SuscripcionService : ISuscripcionService
             suscripcion.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00",
             suscripcion.FechaInicio.ToString("dd/MM/yyyy"),
             suscripcion.FechaFin.ToString("dd/MM/yyyy"),
-            suscripcion.Activa == true ? "Activa" : "Cancelada"
+            EstadoSuscripcion(suscripcion)
         };
+    }
+
+    private static string EstadoSuscripcion(Suscripcion suscripcion)
+    {
+        if (suscripcion.TieneFacturaPendiente)
+            return "Pendiente de pago";
+
+        if (suscripcion.Activa == true && suscripcion.FechaFin < DateTime.Today)
+            return "Vencida";
+
+        return suscripcion.Activa == true ? "Activa" : "Cancelada";
     }
 
     private static string[] GetFiltros(string? search, string? estado)
@@ -470,8 +555,9 @@ public class SuscripcionService : ISuscripcionService
         {
             new() { Label = "Total", Value = suscripciones.Count.ToString() },
             new() { Label = "Activas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin >= hoy).ToString() },
+            new() { Label = "Pendientes", Value = suscripciones.Count(s => s.TieneFacturaPendiente).ToString() },
             new() { Label = "Vencidas", Value = suscripciones.Count(s => s.Activa == true && s.FechaFin < hoy).ToString() },
-            new() { Label = "Canceladas", Value = suscripciones.Count(s => s.Activa != true).ToString() }
+            new() { Label = "Canceladas", Value = suscripciones.Count(s => s.Activa != true && !s.TieneFacturaPendiente).ToString() }
         };
     }
 }

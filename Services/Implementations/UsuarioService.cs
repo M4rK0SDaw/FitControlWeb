@@ -33,6 +33,10 @@ public class UsuarioService : IUsuarioService
     {
         return await _context.Usuarios
             .Include(u => u.Rol)
+            .Include(u => u.Clases)
+                .ThenInclude(c => c.Especialidad)
+            .Include(u => u.Clases)
+                .ThenInclude(c => c.Reservas)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
@@ -80,12 +84,36 @@ public class UsuarioService : IUsuarioService
         if (usuario.Activo != true)
             return ServiceResult.Fail("El usuario ya esta dado de baja.", "USUARIO");
 
+        var esEntrenador = await _context.Rols
+            .AnyAsync(r => r.Id == usuario.RolId && r.Nombre == "Entrenador");
+
+        if (esEntrenador)
+        {
+            var ahora = DateTime.Now;
+            var hoy = DateOnly.FromDateTime(ahora);
+            var horaActual = TimeOnly.FromDateTime(ahora);
+
+            var clasesFuturasActivas = await _context.Clases.CountAsync(c =>
+                c.EntrenadorId == id &&
+                c.Activo == true &&
+                (c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual)));
+
+            if (clasesFuturasActivas > 0)
+            {
+                // Decision de negocio: se bloquea la baja para evitar clases futuras huerfanas
+                // y reservas canceladas sin una reasignacion manual previa del administrador.
+                return ServiceResult.Fail(
+                    $"No se puede dar de baja al entrenador porque tiene {clasesFuturasActivas} clase(s) futura(s) activa(s). Reasigna o cancela esas clases antes de continuar.",
+                    "ENTRENADOR_CON_CLASES");
+            }
+        }
+
         var estadoCanceladaId = await _context.EstadoReservas
             .Where(e => e.Nombre == "Cancelada")
             .Select(e => e.Id)
             .FirstOrDefaultAsync();
 
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var fechaBaja = DateOnly.FromDateTime(DateTime.Today);
 
         var suscripcionesActivas = await _context.Suscripciones
             .Where(s => s.UsuarioId == id && s.Activa == true && s.FechaFin >= DateTime.Today)
@@ -100,7 +128,7 @@ public class UsuarioService : IUsuarioService
         {
             var reservasFuturas = await _context.Reservas
                 .Include(r => r.Clase)
-                .Where(r => r.UsuarioId == id && r.Activo == true && r.Clase.Fecha >= hoy)
+                .Where(r => r.UsuarioId == id && r.Activo == true && r.Clase.Fecha >= fechaBaja)
                 .ToListAsync();
 
             foreach (var reserva in reservasFuturas)
@@ -313,7 +341,7 @@ public class UsuarioService : IUsuarioService
         {
             Content = ExportHelper.ToCsv(usuarios, headers, UsuarioExportRow),
             ContentType = "text/csv",
-            FileName = "usuarios.csv"
+            FileName = ExportFileNameHelper.Build("usuarios", "csv")
         };
     }
 
@@ -342,7 +370,7 @@ public class UsuarioService : IUsuarioService
                     u.Activo == true ? "Activo" : "Inactivo"
                 }),
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            FileName = "usuarios.xlsx"
+            FileName = ExportFileNameHelper.Build("usuarios", "xlsx")
         };
     }
 
@@ -369,7 +397,7 @@ public class UsuarioService : IUsuarioService
                     u.Activo == true ? "Activo" : "Inactivo"
                 }),
             ContentType = "application/pdf",
-            FileName = "usuarios.pdf"
+            FileName = ExportFileNameHelper.Build("usuarios", "pdf")
         };
     }
 

@@ -66,6 +66,7 @@
                 <select name="estado" class="form-select">
                     <option value="">Todas</option>
                     <option value="Activa" selected="@(Model.Estado == "Activa")">Activas</option>
+                    <option value="Pendiente" selected="@(Model.Estado == "Pendiente")">Pendientes de pago</option>
                     <option value="Cancelada" selected="@(Model.Estado == "Cancelada")">Canceladas</option>
                     <option value="Vencida" selected="@(Model.Estado == "Vencida")">Vencidas</option>
                 </select>
@@ -91,7 +92,6 @@
             </div>
         </form>
 
-        <br />
         <partial name="_ExportButtons" model="Model.ExportButtons" />
     </div>
 
@@ -135,7 +135,11 @@
                             <td>@suscripcion.FechaFin.ToString("dd/MM/yyyy")</td>
                             <td>@(suscripcion.TipoSuscripcion?.Precio.ToString("0.00") ?? "0.00") €</td>
                             <td>
-                                @if (suscripcion.Activa == true && !vencida)
+                                @if (suscripcion.TieneFacturaPendiente)
+                                {
+                                    <span class="badge bg-info text-dark">Pendiente de pago</span>
+                                }
+                                else if (suscripcion.Activa == true && !vencida)
                                 {
                                     <span class="badge bg-success">Activa</span>
                                 }
@@ -190,6 +194,15 @@
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </form>
+                                    }
+                                    else if (suscripcion.TieneFacturaPendiente)
+                                    {
+                                        <a asp-action="Details"
+                                           asp-route-id="@suscripcion.Id"
+                                           class="btn btn-sm btn-outline-success"
+                                           title="Revisar factura pendiente">
+                                            <i class="bi bi-receipt"></i>
+                                        </a>
                                     }
                                     else
                                     {

@@ -46,23 +46,6 @@
         <div class="d-flex gap-2 align-items-center flex-wrap">
             @if (User.IsInRole("Administrador"))
             {
-                var exportModel = new ExportButtonsViewModel
-                {
-                    Controller = "Clases",
-                    ExcelAction = "ExportExcel",
-                    CsvAction = "ExportCsv",
-                    PdfAction = "ExportPdf",
-                    RouteValues = new Dictionary<string, string?>
-                    {
-                        { "search", Model.Search },
-                        { "entrenadorId", Model.EntrenadorId?.ToString() },
-                        { "especialidadId", Model.EspecialidadId?.ToString() },
-                        { "estado", Model.Estado }
-                    }
-                };
-
-                <partial name="_ExportButtons" model="exportModel" />
-
                 <a asp-action="Create" class="btn btn-orange">
                     <i class="bi bi-plus-lg me-1"></i> Nueva Clase
                 </a>
@@ -130,6 +113,26 @@
                 </a>
             </div>
         </form>
+
+        @if (User.IsInRole("Administrador"))
+        {
+            var exportModel = new ExportButtonsViewModel
+            {
+                Controller = "Clases",
+                ExcelAction = "ExportExcel",
+                CsvAction = "ExportCsv",
+                PdfAction = "ExportPdf",
+                RouteValues = new Dictionary<string, string?>
+                {
+                    { "search", Model.Search },
+                    { "entrenadorId", Model.EntrenadorId?.ToString() },
+                    { "especialidadId", Model.EspecialidadId?.ToString() },
+                    { "estado", Model.Estado }
+                }
+            };
+
+            <partial name="_ExportButtons" model="exportModel" />
+        }
     </div>
 
     <div class="table-responsive">

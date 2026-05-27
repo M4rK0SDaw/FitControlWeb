@@ -10,6 +10,18 @@
     color: #ff7a00;
 }
 
+.login-logo-img {
+    width: 150px;
+    max-width: 100%;
+    height: auto;
+}
+
+.login-card-logo {
+    width: 132px;
+    max-width: 100%;
+    height: auto;
+}
+
 .auth-panel {
     background: #111;
 }

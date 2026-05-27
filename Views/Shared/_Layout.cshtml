@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - FitControl Web</title>
 
+    <link rel="icon" type="image/svg+xml" href="~/img/logo-fitcontrol.svg" asp-append-version="true" />
+    <link id="appFavicon" rel="alternate icon" type="image/png" href="~/img/logo-fitcontrol-canva-transparent-light.png" asp-append-version="true" />
+    @* <link rel="shortcut icon" href="~/favicon.ico" asp-append-version="true" /> *@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/FitControlWeb.styles.css" asp-append-version="true" />
@@ -13,7 +16,7 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 
-<body>
+<body data-authenticated="@((User.Identity?.IsAuthenticated == true).ToString().ToLowerInvariant())">
 @{
     string? usuarioIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     string? fotoUsuarioUrl = null;
@@ -67,8 +70,11 @@
             <aside class="sidebar" id="appSidebar" aria-label="Menu principal">
                 <div class="sidebar-brand">
                     <a asp-controller="Home" asp-action="Index" class="brand-link" aria-label="FitControl Web">
-                        <span class="brand-mark"><i class="bi bi-activity"></i></span>
-                        <span class="brand-text"><span>FIT</span><strong>CONTROL</strong></span>
+                        <img src="~/img/logo-fitcontrol-canva-transparent-dark.png"
+                             data-logo-light="@Url.Content("~/img/logo-fitcontrol-canva-transparent-dark.png")"
+                             data-logo-dark="@Url.Content("~/img/logo-fitcontrol-canva-transparent-dark.png")"
+                             alt="FitControl"
+                             class="brand-logo-img js-theme-logo" />
                     </a>
 
                     <button class="sidebar-icon-btn d-lg-none"
@@ -174,10 +180,10 @@
                             <i class="bi bi-clipboard2-pulse"></i><span>Mi panel</span>
                         </a>
 
-                        @* <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="sidebar-link @IsActive("EntrenadorDashboard", "Perfil")" title="Mi perfil">
+                        <a asp-controller="EntrenadorDashboard" asp-action="Perfil" class="sidebar-link @IsActive("EntrenadorDashboard", "Perfil")" title="Mi perfil">
                             <i class="bi bi-person-badge"></i><span>Mi perfil</span>
                         </a>
- *@
+
                         <a asp-controller="Clases" asp-action="Index" class="sidebar-link @IsActive("Clases")" title="Mis clases">
                             <i class="bi bi-calendar2-week"></i><span>Mis clases</span>
                         </a>

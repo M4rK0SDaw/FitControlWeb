@@ -8,6 +8,7 @@ public interface ITipoSuscripcionService
     Task<List<TipoSuscripcion>> GetFiltradosAsync(string? search, bool? activo, int page, int pageSize);
     Task<int> CountFiltradosAsync(string? search, bool? activo);
     Task<TipoSuscripcion?> GetByIdAsync(int id);
+    Task<Dictionary<int, Factura>> GetFacturasPorSuscripcionAsync(int tipoSuscripcionId);
 
     Task<ServiceResult> CreateAsync(TipoSuscripcion tipo);
     Task<ServiceResult> UpdateAsync(TipoSuscripcion tipo);

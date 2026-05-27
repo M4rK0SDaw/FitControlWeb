@@ -76,7 +76,7 @@
                     </button>
                 </form>
             }
-            else
+            else if (!Model.TieneFacturaPendiente)
             {
                 <form asp-action="Reactivar"
                       asp-route-id="@Model.Id"
@@ -157,7 +157,11 @@
                     <span class="info-label">Estado</span>
                     <br />
 
-                    @if (Model.Activa == true && !vencida)
+                    @if (Model.TieneFacturaPendiente)
+                    {
+                        <span class="badge bg-info text-dark">Pendiente de pago</span>
+                    }
+                    else if (Model.Activa == true && !vencida)
                     {
                         <span class="badge bg-success">Activa</span>
                     }

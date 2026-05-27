@@ -1,6 +1,7 @@
 using System.Text;
 using ClosedXML.Excel;
 using iText.IO.Font.Constants;
+using iText.IO.Image;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.Kernel.Geom;
@@ -147,12 +148,38 @@ public static class ExportHelper
             .Select(row => row.Select(LimpiarTextoPdf).ToArray())
             .ToList();
 
-        document.Add(
-            new Paragraph("FITCONTROL WEB")
-                .SetFont(fontBold)
-                .SetFontSize(20)
-                .SetFontColor(colorPrincipal)
-                .SetTextAlignment(TextAlignment.CENTER));
+        var header = new Table(UnitValue.CreatePointArray(new float[] { 118, 150 }))
+            .SetWidth(268)
+            .SetHorizontalAlignment(HorizontalAlignment.LEFT);
+
+        var logoCell = new Cell()
+            .SetBorder(Border.NO_BORDER)
+            .SetPadding(0)
+            .SetVerticalAlignment(VerticalAlignment.MIDDLE);
+
+        var logoPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "logo-fitcontrol-canva-transparent-light.png");
+
+        if (File.Exists(logoPath))
+        {
+            logoCell.Add(new Image(ImageDataFactory.Create(logoPath))
+                .SetWidth(108)
+                .SetAutoScaleHeight(true));
+        }
+
+        header.AddCell(logoCell);
+
+        header.AddCell(new Cell()
+            .SetBorder(Border.NO_BORDER)
+            .SetPadding(0)
+            .SetTextAlignment(TextAlignment.LEFT)
+            .SetVerticalAlignment(VerticalAlignment.MIDDLE)
+            .Add(new Paragraph("Reportes del sistema")
+                .SetFont(font)
+                .SetFontSize(8.5f)
+                .SetFontColor(colorTexto)
+                .SetMargin(0)));
+
+        document.Add(header);
 
         document.Add(
             new Paragraph(title)

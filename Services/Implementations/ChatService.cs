@@ -40,14 +40,17 @@ public class ChatService : IChatService
 
     public async Task<List<Usuario>> GetUsuariosDisponiblesAsync(int usuarioId, bool esCliente)
     {
-        var rolDestino = esCliente ? "Entrenador" : "Cliente";
-
-        return await _context.Usuarios
+        var query = _context.Usuarios
             .Include(u => u.Rol)
             .Where(u =>
                 u.Id != usuarioId &&
-                u.Activo == true &&
-                u.Rol.Nombre == rolDestino)
+                u.Activo == true);
+
+        query = esCliente
+            ? query.Where(u => u.Rol.Nombre == "Entrenador")
+            : query.Where(u => u.Rol.Nombre == "Cliente" || u.Rol.Nombre == "Entrenador");
+
+        return await query
             .OrderBy(u => u.Nombre)
             .ThenBy(u => u.Apellidos)
             .ToListAsync();
@@ -109,6 +112,11 @@ public class ChatService : IChatService
         if (string.IsNullOrWhiteSpace(contenido))
             return null;
 
+        contenido = contenido.Trim();
+
+        if (contenido.Length > 1000)
+            return null;
+
         var conversacion = await _context.Conversaciones
             .FirstOrDefaultAsync(c => c.Id == conversacionId);
 
@@ -129,7 +137,7 @@ public class ChatService : IChatService
         {
             ConversacionId = conversacionId,
             RemitenteId = remitenteId,
-            Contenido = contenido.Trim(),
+            Contenido = contenido,
             FechaEnvio = DateTime.Now,
             Leido = false
         };
@@ -159,6 +167,9 @@ public class ChatService : IChatService
 
     public async Task<bool> PuedeHablarConAsync(int usuarioActualId, int otroUsuarioId)
     {
+        if (usuarioActualId == otroUsuarioId)
+            return false;
+
         var usuarioActual = await _context.Usuarios
             .Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.Id == usuarioActualId);
@@ -177,6 +188,9 @@ public class ChatService : IChatService
             return true;
 
         if (usuarioActual.Rol.Nombre == "Entrenador" && otroUsuario.Rol.Nombre == "Cliente")
+            return true;
+
+        if (usuarioActual.Rol.Nombre == "Entrenador" && otroUsuario.Rol.Nombre == "Entrenador")
             return true;
 
         return false;

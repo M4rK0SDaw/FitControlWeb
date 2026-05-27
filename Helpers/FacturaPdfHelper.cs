@@ -1,6 +1,7 @@
 using FitControlWeb.Models.Entities;
 using iText.Barcodes;
 using iText.IO.Font.Constants;
+using iText.IO.Image;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.Kernel.Geom;
@@ -14,7 +15,7 @@ namespace FitControlWeb.Helpers;
 
 public static class FacturaPdfHelper
 {
-    public static byte[] GenerarFacturaPdf(Factura factura)
+    public static byte[] GenerarFacturaPdf(Factura factura, string? logoPath = null)
     {
         using var ms = new MemoryStream();
         using var writer = new PdfWriter(ms);
@@ -43,6 +44,9 @@ public static class FacturaPdfHelper
             : 0m;
         var estadoTexto = factura.Pagada == true ? "PAGADA" : "PENDIENTE";
         var estadoColor = factura.Pagada == true ? colorVerde : colorRojo;
+        var telefonoCliente = string.IsNullOrWhiteSpace(factura.Usuario?.Telefono)
+            ? "No indicado"
+            : factura.Usuario.Telefono;
 
         var qrPayload = string.Join(Environment.NewLine, new[]
         {
@@ -64,18 +68,33 @@ public static class FacturaPdfHelper
         var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 58, 42 }))
             .UseAllAvailableWidth();
 
-        headerTable.AddCell(new Cell()
+        var brandCell = new Cell()
             .SetBorder(Border.NO_BORDER)
-            .SetPadding(0)
-            .Add(new Paragraph("FITCONTROL")
+            .SetPadding(0);
+
+        if (!string.IsNullOrWhiteSpace(logoPath) && File.Exists(logoPath))
+        {
+            var logo = new Image(ImageDataFactory.Create(logoPath))
+                .SetWidth(100)
+                .SetAutoScaleHeight(false);
+
+            brandCell.Add(logo);
+        }
+        else
+        {
+            brandCell.Add(new Paragraph("FITCONTROL")
                 .SetFont(fontBold)
                 .SetFontSize(22)
-                .SetFontColor(colorPrincipal))
-            .Add(new Paragraph("Factura de cliente")
-                .SetFont(font)
-                .SetFontSize(10)
-                .SetFontColor(colorTexto)
-                .SetMarginTop(2)));
+                .SetFontColor(colorPrincipal));
+        }
+
+        brandCell.Add(new Paragraph("Factura de cliente")
+            .SetFont(font)
+            .SetFontSize(10)
+            .SetFontColor(colorTexto)
+            .SetMarginTop(2));
+
+        headerTable.AddCell(brandCell);
 
         headerTable.AddCell(new Cell()
             .SetBorder(Border.NO_BORDER)
@@ -112,6 +131,11 @@ public static class FacturaPdfHelper
                 .SetFontColor(colorTexto)
                 .SetMarginBottom(2))
             .Add(new Paragraph($"Email: {factura.Usuario?.Email ?? "-"}")
+                .SetFont(font)
+                .SetFontSize(9)
+                .SetFontColor(colorTexto)
+                .SetMarginBottom(2))
+            .Add(new Paragraph($"Teléfono: {telefonoCliente}")
                 .SetFont(font)
                 .SetFontSize(9)
                 .SetFontColor(colorTexto)
@@ -163,9 +187,14 @@ public static class FacturaPdfHelper
                 .SetFontSize(8.5f)
                 .SetFontColor(colorTexto)
                 .SetMarginBottom(2))
-            .Add(new Paragraph("QR y huella para comprobacion interna del documento")
+            .Add(new Paragraph("QR y huella para comprobación interna del documento")
                 .SetFont(font)
                 .SetFontSize(8)
+                .SetFontColor(ColorConstants.GRAY)
+                .SetMarginBottom(2))
+            .Add(new Paragraph("Registro interno de trazabilidad. No sustituye a la validación oficial de la AEAT.")
+                .SetFont(font)
+                .SetFontSize(7.2f)
                 .SetFontColor(ColorConstants.GRAY)
                 .SetMargin(0)));
 
@@ -208,10 +237,13 @@ public static class FacturaPdfHelper
         {
             foreach (var item in factura.FacturaDetalles)
             {
+                var concepto = item.Concepto
+                    .Replace("Suscripcion", "Suscripción", StringComparison.OrdinalIgnoreCase);
+
                 table.AddCell(new Cell()
                     .SetBorder(new SolidBorder(colorBorde, 1))
                     .SetPadding(6)
-                    .Add(new Paragraph(item.Concepto)
+                    .Add(new Paragraph(concepto)
                         .SetFont(font)
                         .SetFontSize(9.5f)
                         .SetMargin(0)));
@@ -299,7 +331,7 @@ public static class FacturaPdfHelper
             var pagoTable = new Table(UnitValue.CreatePercentArray(new float[] { 22, 28, 22, 28 }))
                 .UseAllAvailableWidth();
 
-            pagoTable.AddCell(LabelCell("Metodo de pago", fontBold, colorSuave, colorBorde));
+            pagoTable.AddCell(LabelCell("Método de pago", fontBold, colorSuave, colorBorde));
             pagoTable.AddCell(ValueCell(pago.MetodoPago?.Nombre ?? "-", font, colorBorde));
             pagoTable.AddCell(LabelCell("Fecha de pago", fontBold, colorSuave, colorBorde));
             pagoTable.AddCell(ValueCell($"{pago.FechaPago:dd/MM/yyyy HH:mm}", font, colorBorde));

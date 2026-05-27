@@ -17,7 +17,10 @@ public class MetodoPagoService : IMetodoPagoService
 
     private IQueryable<MetodoPago> Query(string? search)
     {
-        var query = _context.MetodoPagos.AsQueryable();
+        var query = _context.MetodoPagos
+            .Include(m => m.Pagos)
+            .AsNoTracking()
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -45,6 +48,8 @@ public class MetodoPagoService : IMetodoPagoService
     {
         return await _context.MetodoPagos
             .Include(m => m.Pagos)
+                .ThenInclude(p => p.Factura)
+                    .ThenInclude(f => f.Usuario)
             .FirstOrDefaultAsync(m => m.Id == id);
     }
 
@@ -91,7 +96,13 @@ public class MetodoPagoService : IMetodoPagoService
             return ServiceResult.Fail("El método de pago no existe.", "METODO_NO_EXISTE");
 
         if (metodo.Pagos.Any())
-            return ServiceResult.Fail("No puedes eliminar este método porque tiene pagos asociados.", "METODO_CON_PAGOS");
+        {
+            // Decision de negocio: no se borra un metodo usado por pagos reales para no perder
+            // el historico financiero. Si se quisiera ocultar en nuevos pagos, se anadiria Activo.
+            return ServiceResult.Fail(
+                "No se puede eliminar este método de pago porque tiene pagos asociados. Se mantiene para conservar el histórico de facturas y pagos.",
+                "METODO_CON_PAGOS");
+        }
 
         _context.MetodoPagos.Remove(metodo);
         await _context.SaveChangesAsync();

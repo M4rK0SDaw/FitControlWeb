@@ -49,7 +49,37 @@ public class TipoSuscripcionService : ITipoSuscripcionService
     public async Task<TipoSuscripcion?> GetByIdAsync(int id)
     {
         return await _context.TipoSuscripciones
+            .Include(t => t.Suscripcions)
+                .ThenInclude(s => s.Usuario)
             .FirstOrDefaultAsync(t => t.Id == id);
+    }
+
+    public async Task<Dictionary<int, Factura>> GetFacturasPorSuscripcionAsync(int tipoSuscripcionId)
+    {
+        var suscripcionIds = await _context.Suscripciones
+            .AsNoTracking()
+            .Where(s => s.TipoSuscripcionId == tipoSuscripcionId)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        if (!suscripcionIds.Any())
+            return new Dictionary<int, Factura>();
+
+        var facturas = await _context.Facturas
+            .AsNoTracking()
+            .Where(f => f.Activo == true)
+            .ToListAsync();
+
+        return suscripcionIds
+            .Select(id => new
+            {
+                SuscripcionId = id,
+                Factura = facturas
+                    .OrderByDescending(f => f.FechaEmision)
+                    .FirstOrDefault(f => f.NumeroFactura.EndsWith($"-SUS-{id}"))
+            })
+            .Where(x => x.Factura != null)
+            .ToDictionary(x => x.SuscripcionId, x => x.Factura!);
     }
 
     public async Task<bool> NombreExisteAsync(string nombre, int? excludeId = null)

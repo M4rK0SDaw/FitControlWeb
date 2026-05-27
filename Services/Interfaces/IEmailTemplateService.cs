@@ -1,4 +1,5 @@
 using FitControlWeb.Services.Models;
+using FitControlWeb.Models.Entities;
 
 namespace FitControlWeb.Services.Interfaces;
 
@@ -8,4 +9,5 @@ public interface IEmailTemplateService
     EmailTemplateMessage EmailCuentaBloqueada(string nombre, string resetLink); // BuildAccountLockedEmail(string nombre, string resetLink);
     EmailTemplateMessage EmailRestablecerContrasenya(string nombre, string resetLink); // BuildResetPasswordEmail(string nombre, string resetLink);
     EmailTemplateMessage EmailAdminDirecto(string nombre, string subject, string message); // BuildAdminDirectEmail(string nombre, string subject, string message);
+    EmailTemplateMessage EmailPagoFactura(string nombre, Factura factura);
 }

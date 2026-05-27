@@ -98,7 +98,7 @@ public class SuscripcionesController : Controller
         }
 
         TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = model.Id });
     }
 
     [HttpPost]
@@ -173,6 +173,9 @@ public class SuscripcionesController : Controller
                 break;
             case "FECHAS_INVALIDAS":
                 ModelState.AddModelError("FechaFin", message);
+                break;
+            case "SUSCRIPCION_FACTURADA":
+                ModelState.AddModelError(string.Empty, message);
                 break;
             default:
                 ModelState.AddModelError(string.Empty, message);

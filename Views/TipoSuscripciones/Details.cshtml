@@ -2,6 +2,14 @@
 
 @{
     ViewData["Title"] = "Detalle tipo de suscripción";
+    var suscripciones = Model.Suscripcions?
+        .OrderByDescending(s => s.FechaInicio)
+        .ToList() ?? new List<FitControlWeb.Models.Entities.Suscripcion>();
+    var facturasPorSuscripcion = ViewBag.FacturasPorSuscripcion as Dictionary<int, FitControlWeb.Models.Entities.Factura>
+        ?? new Dictionary<int, FitControlWeb.Models.Entities.Factura>();
+    var hoy = DateTime.Today;
+    var activas = suscripciones.Count(s => s.Activa == true && s.FechaFin >= hoy);
+    var inactivas = suscripciones.Count - activas;
 }
 
 @section Styles {
@@ -82,6 +90,103 @@
                 </span>
             </div>
         </div>
+    </div>
+
+    <div class="row g-3 mt-4">
+        <div class="col-md-4">
+            <div class="info-box">
+                <span class="info-label">Total suscripciones</span>
+                <p class="info-value mb-0">@suscripciones.Count</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="info-box">
+                <span class="info-label">Activas</span>
+                <p class="info-value mb-0">@activas</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="info-box">
+                <span class="info-label">Caducadas o inactivas</span>
+                <p class="info-value mb-0">@inactivas</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box mt-4">
+        <h5 class="fw-bold mb-3">Usuarios suscritos</h5>
+
+        @if (!suscripciones.Any())
+        {
+            <div class="alert alert-info mb-0">
+                No hay usuarios suscritos a este tipo de suscripción.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-modern align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Fecha inicio</th>
+                            <th>Fecha fin</th>
+                            <th>Estado</th>
+                            <th>Factura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var suscripcion in suscripciones)
+                        {
+                            var activa = suscripcion.Activa == true && suscripcion.FechaFin >= hoy;
+                            facturasPorSuscripcion.TryGetValue(suscripcion.Id, out var factura);
+
+                            <tr>
+                                <td>
+                                    @if (suscripcion.Usuario != null)
+                                    {
+                                        <a asp-controller="Usuarios"
+                                           asp-action="Details"
+                                           asp-route-id="@suscripcion.Usuario.Id"
+                                           class="fw-semibold">
+                                            @suscripcion.Usuario.Nombre @suscripcion.Usuario.Apellidos
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span>Sin usuario</span>
+                                    }
+                                </td>
+                                <td>@(suscripcion.Usuario?.Email ?? "-")</td>
+                                <td>@suscripcion.FechaInicio.ToString("dd/MM/yyyy")</td>
+                                <td>@suscripcion.FechaFin.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <span class="badge @(activa ? "bg-success" : "bg-secondary")">
+                                        @(activa ? "Activa" : "Caducada/Inactiva")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (factura != null)
+                                    {
+                                        <a asp-controller="Facturas"
+                                           asp-action="Details"
+                                           asp-route-id="@factura.Id"
+                                           class="btn btn-sm btn-outline-dark">
+                                            <i class="bi bi-receipt"></i> @factura.NumeroFactura
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sin factura</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 

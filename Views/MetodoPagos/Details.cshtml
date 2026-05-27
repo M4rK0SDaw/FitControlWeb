@@ -3,7 +3,10 @@
 @{
     ViewData["Title"] = "Detalle método de pago";
 
-    int totalPagos = Model.Pagos?.Count ?? 0;
+    var pagos = Model.Pagos?
+        .OrderByDescending(p => p.FechaPago)
+        .ToList() ?? new List<FitControlWeb.Models.Entities.Pago>();
+    int totalPagos = pagos.Count;
 }
 
 @section Styles {
@@ -69,6 +72,72 @@
                 </p>
             </div>
         </div>
+    </div>
+
+    <div class="info-box mt-4">
+        <h5 class="fw-bold mb-3">Pagos y facturas asociadas</h5>
+
+        @if (!pagos.Any())
+        {
+            <div class="alert alert-info mb-0">
+                Este método de pago todavía no tiene pagos asociados.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-modern align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID pago</th>
+                            <th>Factura</th>
+                            <th>Cliente</th>
+                            <th>Fecha</th>
+                            <th>Importe</th>
+                            <th>Referencia</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pago in pagos)
+                        {
+                            <tr>
+                                <td class="fw-semibold">#@pago.Id</td>
+                                <td>@(pago.Factura?.NumeroFactura ?? "-")</td>
+                                <td>
+                                    @(pago.Factura?.Usuario != null
+                                        ? $"{pago.Factura.Usuario.Nombre} {pago.Factura.Usuario.Apellidos}"
+                                        : "Sin cliente")
+                                    <br />
+                                    <small class="text-muted">@pago.Factura?.Usuario?.Email</small>
+                                </td>
+                                <td>@(pago.FechaPago?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td class="fw-bold">@pago.Monto.ToString("0.00") EUR</td>
+                                <td class="text-break">@(string.IsNullOrWhiteSpace(pago.ReferenciaExterna) ? "-" : pago.ReferenciaExterna)</td>
+                                <td>
+                                    <span class="badge @(pago.Activo == true ? "bg-success" : "bg-secondary")">
+                                        @(pago.Activo == true ? "Activo" : "Inactivo")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    @if (pago.Factura != null)
+                                    {
+                                        <a asp-controller="Facturas"
+                                           asp-action="Details"
+                                           asp-route-id="@pago.Factura.Id"
+                                           class="btn btn-sm btn-outline-dark"
+                                           title="Ver factura">
+                                            <i class="bi bi-receipt"></i>
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 

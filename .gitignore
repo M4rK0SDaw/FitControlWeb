@@ -91,6 +91,10 @@ StyleCopReport.xml
 *.tmp_proj
 *_wpftmp.csproj
 *.log
+
+# Local runtime artifacts
+App_Data/DataProtectionKeys/
+App_Data/FacturasPdf/
 *.vspscc
 *.vssscc
 .builds

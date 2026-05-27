@@ -69,6 +69,16 @@ public class ClaseService : IClaseService
         if ((clase.CapacidadMinima ?? 0) > (clase.CapacidadMaxima ?? 0))
             return ServiceResult.Fail("La capacidad minima no puede ser mayor que la maxima.", "CAPACIDAD");
 
+        var reservasActivas = await _context.Reservas
+            .CountAsync(r => r.ClaseId == clase.Id && r.Activo == true);
+
+        if ((clase.CapacidadMaxima ?? 0) < reservasActivas)
+        {
+            return ServiceResult.Fail(
+                $"La capacidad maxima no puede ser menor que las {reservasActivas} reservas activas actuales.",
+                "CAPACIDAD");
+        }
+
         if (await EntrenadorTieneSolapeAsync(clase.EntrenadorId, clase.Fecha, clase.HoraInicio, clase.HoraFin, clase.Id))
             return ServiceResult.Fail("El entrenador ya tiene una clase en ese horario.", "SOLAPE");
 
@@ -340,7 +350,7 @@ public class ClaseService : IClaseService
         {
             Content = bytes,
             ContentType = "text/csv",
-            FileName = "clases.csv"
+            FileName = ExportFileNameHelper.Build("clases", "csv")
         };
     }
 
@@ -370,7 +380,7 @@ public class ClaseService : IClaseService
         {
             Content = bytes,
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            FileName = "clases.xlsx"
+            FileName = ExportFileNameHelper.Build("clases", "xlsx")
         };
     }
 
@@ -400,7 +410,7 @@ public class ClaseService : IClaseService
             {
                 Content = bytes,
                 ContentType = "application/pdf",
-                FileName = "clases.pdf"
+                FileName = ExportFileNameHelper.Build("clases", "pdf")
             });
         }
         catch (Exception ex)

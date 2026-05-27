@@ -4,6 +4,7 @@ using FitControlWeb.Models.Entities;
 using FitControlWeb.Services.Interfaces;
 using FitControlWeb.ViewModels.Facturas;
 using FitControlWeb.ViewModels.Shared;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Stripe.Checkout;
 
@@ -12,10 +13,23 @@ namespace FitControlWeb.Services.Implementations;
 public class FacturaService : IFacturaService
 {
     private readonly FitControlDbContext _context;
+    private readonly IWebHostEnvironment _environment;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ILogger<FacturaService> _logger;
 
-    public FacturaService(FitControlDbContext context)
+    public FacturaService(
+        FitControlDbContext context,
+        IWebHostEnvironment environment,
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
+        ILogger<FacturaService> logger)
     {
         _context = context;
+        _environment = environment;
+        _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
+        _logger = logger;
     }
 
     public async Task<List<Factura>> GetAllAsync()
@@ -119,14 +133,14 @@ public class FacturaService : IFacturaService
             return ServiceResult<Factura>.Fail("La suscripcion no tiene tipo asociado.", "TIPO_NO_EXISTE");
 
         var tipoFactura = await _context.TipoFacturas
-            .FirstOrDefaultAsync(t => t.Nombre == "Suscripcion");
+            .FirstOrDefaultAsync(t => t.Nombre == "Suscripcion" || t.Nombre == "Suscripción");
 
         if (tipoFactura == null)
         {
-            tipoFactura = new TipoFactura
-            {
-                Nombre = "Suscripcion"
-            };
+                tipoFactura = new TipoFactura
+                {
+                Nombre = "Suscripción"
+                };
 
             _context.TipoFacturas.Add(tipoFactura);
             await _context.SaveChangesAsync();
@@ -155,7 +169,7 @@ public class FacturaService : IFacturaService
         var detalle = new FacturaDetalle
         {
             FacturaId = factura.Id,
-            Concepto = $"Suscripcion {suscripcion.TipoSuscripcion.Nombre} ({suscripcion.FechaInicio:dd/MM/yyyy} - {suscripcion.FechaFin:dd/MM/yyyy})",
+            Concepto = $"Suscripción {suscripcion.TipoSuscripcion.Nombre} ({suscripcion.FechaInicio:dd/MM/yyyy} - {suscripcion.FechaFin:dd/MM/yyyy})",
             Cantidad = 1,
             PrecioUnitario = subtotal
         };
@@ -166,33 +180,35 @@ public class FacturaService : IFacturaService
         return ServiceResult<Factura>.Ok(factura, "Factura generada correctamente.");
     }
 
-    public async Task<List<Factura>> GetFiltradasAsync(string? search, bool? pagada, int page, int pageSize)
+    public async Task<List<Factura>> GetFiltradasAsync(string? search, bool? pagada, int? metodoPagoId, int page, int pageSize)
     {
-        return await QueryFacturas(search, pagada)
+        return await QueryFacturas(search, pagada, metodoPagoId)
             .OrderByDescending(f => f.FechaEmision)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<int> CountFiltradasAsync(string? search, bool? pagada)
+    public async Task<int> CountFiltradasAsync(string? search, bool? pagada, int? metodoPagoId)
     {
-        return await QueryFacturas(search, pagada).CountAsync();
+        return await QueryFacturas(search, pagada, metodoPagoId).CountAsync();
     }
 
-    public async Task<FacturaIndexViewModel> GetIndexViewModelAsync(string? search, bool? pagada, int page, int pageSize)
+    public async Task<FacturaIndexViewModel> GetIndexViewModelAsync(string? search, bool? pagada, int? metodoPagoId, int page, int pageSize)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is 10 or 25 or 50 ? pageSize : 10;
 
-        var facturas = await GetFiltradasAsync(search, pagada, page, pageSize);
-        var totalItems = await CountFiltradasAsync(search, pagada);
+        var facturas = await GetFiltradasAsync(search, pagada, metodoPagoId, page, pageSize);
+        var totalItems = await CountFiltradasAsync(search, pagada, metodoPagoId);
 
         return new FacturaIndexViewModel
         {
             Facturas = facturas,
             Search = search,
             Pagada = pagada,
+            MetodoPagoId = metodoPagoId,
+            MetodosPago = await GetMetodosPagoSelectListAsync(metodoPagoId),
             CurrentPage = page,
             PageSize = pageSize,
             TotalPages = (int)Math.Ceiling((double)totalItems / pageSize),
@@ -203,15 +219,15 @@ public class FacturaService : IFacturaService
         };
     }
 
-    public async Task<FileContentViewModel> ExportCsvAsync(string? search, bool? pagada)
+    public async Task<FileContentViewModel> ExportCsvAsync(string? search, bool? pagada, int? metodoPagoId)
     {
-        var facturas = await QueryFacturas(search, pagada)
+        var facturas = await QueryFacturas(search, pagada, metodoPagoId)
             .OrderByDescending(f => f.FechaEmision)
             .ToListAsync();
 
         var headers = new[]
         {
-            "Numero", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
+            "Numero", "Cliente", "Email", "Tipo", "Metodo pago", "Fecha", "Subtotal", "Impuestos", "Total", "Estado"
         };
 
         var bytes = ExportHelper.ToCsv(
@@ -223,6 +239,7 @@ public class FacturaService : IFacturaService
                 $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}".Trim(),
                 f.Usuario?.Email ?? "",
                 f.TipoFactura?.Nombre ?? "",
+                GetMetodoPagoTexto(f),
                 f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
                 f.Subtotal.ToString("0.00"),
                 f.Impuestos.ToString("0.00"),
@@ -234,13 +251,13 @@ public class FacturaService : IFacturaService
         {
             Content = bytes,
             ContentType = "text/csv",
-            FileName = "facturas.csv"
+            FileName = ExportFileNameHelper.Build("facturas", "csv")
         };
     }
 
-    public async Task<FileContentViewModel> ExportExcelAsync(string? search, bool? pagada)
+    public async Task<FileContentViewModel> ExportExcelAsync(string? search, bool? pagada, int? metodoPagoId)
     {
-        var facturas = await QueryFacturas(search, pagada)
+        var facturas = await QueryFacturas(search, pagada, metodoPagoId)
             .OrderByDescending(f => f.FechaEmision)
             .ToListAsync();
 
@@ -249,15 +266,16 @@ public class FacturaService : IFacturaService
             "Facturas",
             "Listado de facturas",
             "Facturas filtradas",
-            GetFiltrosExport(search, pagada),
+            GetFiltrosExport(search, pagada, metodoPagoId),
             GetResumenExport(facturas),
-            new[] { "Numero", "Cliente", "Email", "Tipo", "Fecha", "Subtotal", "Impuestos", "Total", "Estado" },
+            new[] { "Numero", "Cliente", "Email", "Tipo", "Metodo pago", "Fecha", "Subtotal", "Impuestos", "Total", "Estado" },
             f => new object[]
             {
                 f.NumeroFactura,
                 $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}".Trim(),
                 f.Usuario?.Email ?? "",
                 f.TipoFactura?.Nombre ?? "",
+                GetMetodoPagoTexto(f),
                 f.FechaEmision?.ToString("dd/MM/yyyy HH:mm") ?? "",
                 f.Subtotal,
                 f.Impuestos,
@@ -269,15 +287,15 @@ public class FacturaService : IFacturaService
         {
             Content = bytes,
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            FileName = "facturas.xlsx"
+            FileName = ExportFileNameHelper.Build("facturas", "xlsx")
         };
     }
 
-    public async Task<ServiceResult<FileContentViewModel>> ExportPdfAsync(string? search, bool? pagada)
+    public async Task<ServiceResult<FileContentViewModel>> ExportPdfAsync(string? search, bool? pagada, int? metodoPagoId)
     {
         try
         {
-            var facturas = await QueryFacturas(search, pagada)
+            var facturas = await QueryFacturas(search, pagada, metodoPagoId)
                 .OrderByDescending(f => f.FechaEmision)
                 .ToListAsync();
 
@@ -285,13 +303,14 @@ public class FacturaService : IFacturaService
                 facturas,
                 "Listado de facturas",
                 "Facturas filtradas",
-                GetFiltrosExport(search, pagada),
+                GetFiltrosExport(search, pagada, metodoPagoId),
                 GetResumenExport(facturas),
-                new[] { "Numero", "Cliente", "Fecha", "Total", "Estado" },
+                new[] { "Numero", "Cliente", "Metodo", "Fecha", "Total", "Estado" },
                 f => new[]
                 {
                     f.NumeroFactura,
                     $"{f.Usuario?.Nombre ?? ""} {f.Usuario?.Apellidos ?? ""}".Trim(),
+                    GetMetodoPagoTexto(f),
                     f.FechaEmision?.ToString("dd/MM/yyyy") ?? "",
                     $"{f.Total:0.00} EUR",
                     f.Pagada == true ? "Pagada" : "Pendiente"
@@ -301,7 +320,7 @@ public class FacturaService : IFacturaService
             {
                 Content = bytes,
                 ContentType = "application/pdf",
-                FileName = "facturas.pdf"
+                FileName = ExportFileNameHelper.Build("facturas", "pdf")
             });
         }
         catch (Exception ex)
@@ -322,7 +341,7 @@ public class FacturaService : IFacturaService
 
         return ServiceResult<FileContentViewModel>.Ok(new FileContentViewModel
         {
-            Content = FacturaPdfHelper.GenerarFacturaPdf(factura),
+            Content = await GetOrCreateFacturaPdfAsync(factura),
             ContentType = "application/pdf",
             FileName = CrearNombreFacturaPdf(factura.NumeroFactura),
             Inline = inline
@@ -402,6 +421,8 @@ public class FacturaService : IFacturaService
     public async Task<ServiceResult> ConfirmarPagoStripeAsync(int facturaId, string sessionId)
     {
         var factura = await _context.Facturas
+            .Include(f => f.Usuario)
+            .Include(f => f.FacturaDetalles)
             .Include(f => f.Pagos)
             .FirstOrDefaultAsync(f => f.Id == facturaId && f.Activo == true);
 
@@ -454,18 +475,62 @@ public class FacturaService : IFacturaService
 
         _context.Pagos.Add(pago);
         factura.Pagada = true;
+        await ActivarSuscripcionVinculadaAsync(factura);
 
         await _context.SaveChangesAsync();
+        await EnviarEmailPagoConfirmadoAsync(factura);
 
         return ServiceResult.Ok("Pago confirmado con Stripe correctamente.");
     }
 
-    private IQueryable<Factura> QueryFacturas(string? search, bool? pagada)
+    private async Task EnviarEmailPagoConfirmadoAsync(Factura factura)
+    {
+        if (factura.Usuario == null || string.IsNullOrWhiteSpace(factura.Usuario.Email))
+            return;
+
+        try
+        {
+            var template = _emailTemplateService.EmailPagoFactura(factura.Usuario.Nombre, factura);
+            var pdf = await GetOrCreateFacturaPdfAsync(factura);
+
+            await _emailService.SendWithAttachmentAsync(
+                factura.Usuario.Email,
+                template.Subject,
+                template.HtmlBody,
+                pdf,
+                CrearNombreFacturaPdf(factura.NumeroFactura),
+                "application/pdf");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar el email de pago confirmado para la factura {FacturaId}", factura.Id);
+        }
+    }
+
+    private async Task ActivarSuscripcionVinculadaAsync(Factura factura)
+    {
+        var suscripcionId = ExtraerSuscripcionId(factura.NumeroFactura);
+
+        if (!suscripcionId.HasValue)
+            return;
+
+        var suscripcion = await _context.Suscripciones
+            .FirstOrDefaultAsync(s => s.Id == suscripcionId.Value);
+
+        if (suscripcion == null)
+            return;
+
+        suscripcion.Activa = true;
+    }
+
+    private IQueryable<Factura> QueryFacturas(string? search, bool? pagada, int? metodoPagoId)
     {
         var query = _context.Facturas
             .Include(f => f.Usuario)
             .Include(f => f.TipoFactura)
             .Include(f => f.FacturaDetalles)
+            .Include(f => f.Pagos)
+                .ThenInclude(p => p.MetodoPago)
             .Where(f => f.Activo == true)
             .AsQueryable();
 
@@ -483,15 +548,23 @@ public class FacturaService : IFacturaService
             query = query.Where(f => f.Pagada == pagada.Value);
         }
 
+        if (metodoPagoId.HasValue)
+        {
+            query = query.Where(f => f.Pagos.Any(p =>
+                p.Activo == true &&
+                p.MetodoPagoId == metodoPagoId.Value));
+        }
+
         return query;
     }
 
-    private static string[] GetFiltrosExport(string? search, bool? pagada)
+    private static string[] GetFiltrosExport(string? search, bool? pagada, int? metodoPagoId)
     {
         return new[]
         {
             $"Busqueda: {(string.IsNullOrWhiteSpace(search) ? "Sin filtro" : search)}",
-            $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Si" : "No") : "Todas")}"
+            $"Pagada: {(pagada.HasValue ? (pagada.Value ? "Si" : "No") : "Todas")}",
+            $"MetodoPagoId: {(metodoPagoId.HasValue ? metodoPagoId.Value.ToString() : "Todos")}"
         };
     }
 
@@ -513,6 +586,61 @@ public class FacturaService : IFacturaService
             .Select(c => invalidChars.Contains(c) ? '-' : c)
             .ToArray());
 
-        return $"factura-{numeroSeguro}.pdf";
+        return ExportFileNameHelper.BuildFactura(numeroSeguro);
+    }
+
+    private async Task<List<SelectListItem>> GetMetodosPagoSelectListAsync(int? selectedId)
+    {
+        return await _context.MetodoPagos
+            .AsNoTracking()
+            .Where(m => m.Pagos.Any())
+            .OrderBy(m => m.Nombre)
+            .Select(m => new SelectListItem
+            {
+                Value = m.Id.ToString(),
+                Text = m.Nombre,
+                Selected = selectedId == m.Id
+            })
+            .ToListAsync();
+    }
+
+    private static string GetMetodoPagoTexto(Factura factura)
+    {
+        return factura.Pagos?
+            .Where(p => p.Activo == true)
+            .OrderByDescending(p => p.FechaPago)
+            .Select(p => p.MetodoPago?.Nombre)
+            .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+            ?? (factura.Pagada == true ? "Sin metodo" : "Pendiente");
+    }
+
+    private async Task<byte[]> GetOrCreateFacturaPdfAsync(Factura factura)
+    {
+        var folder = Path.Combine(_environment.ContentRootPath, "App_Data", "FacturasPdf");
+        Directory.CreateDirectory(folder);
+
+        var estado = factura.Pagada == true ? "pagada" : "pendiente";
+        var filePath = Path.Combine(folder, $"{factura.Id}-{estado}-{CrearNombreFacturaPdf(factura.NumeroFactura)}");
+
+        if (File.Exists(filePath))
+            return await File.ReadAllBytesAsync(filePath);
+
+        var logoPath = Path.Combine(_environment.WebRootPath, "img", "logo-fitcontrol-canva-transparent-light.png");
+        var bytes = FacturaPdfHelper.GenerarFacturaPdf(factura, logoPath);
+        await File.WriteAllBytesAsync(filePath, bytes);
+
+        return bytes;
+    }
+
+    private static int? ExtraerSuscripcionId(string numeroFactura)
+    {
+        const string marker = "-SUS-";
+        var index = numeroFactura.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+
+        if (index < 0)
+            return null;
+
+        var rawId = numeroFactura[(index + marker.Length)..];
+        return int.TryParse(rawId, out var suscripcionId) ? suscripcionId : null;
     }
 }

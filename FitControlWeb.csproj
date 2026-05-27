@@ -27,4 +27,8 @@
     <PackageReference Include="Stripe.net" Version="51.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="App_Data\FacturasPdf\" />
+  </ItemGroup>
+
 </Project>

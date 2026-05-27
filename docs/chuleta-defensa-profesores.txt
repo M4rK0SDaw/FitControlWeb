@@ -1,0 +1,190 @@
+CHULETA DE DEFENSA - FITCONTROL WEB
+
+Idea clave:
+No tienes que saberlo todo de memoria. Tienes que saber explicar decisiones. Si dudas, responde con calma: "Lo plantee asi porque..." y vuelves a arquitectura, servicios o reglas de negocio.
+
+RESPUESTA CORTA SI TE PREGUNTAN "DE QUE VA TU PROYECTO"
+
+FitControl Web es una aplicacion web MVC para gestionar un gimnasio. Tiene roles de administrador, entrenador y cliente. Permite gestionar usuarios, clases, reservas, suscripciones, facturas, pagos con Stripe, emails y chat interno con SignalR.
+
+SI TE PREGUNTAN POR LA ARQUITECTURA
+
+Uso ASP.NET Core MVC.
+Las vistas Razor muestran los datos.
+Los controladores gestionan la peticion y los permisos.
+La logica de negocio esta en servicios.
+Entity Framework Core conecta con SQL Server.
+
+Frase buena:
+"Intente evitar que los controladores tuvieran demasiada logica, por eso movi las reglas importantes a servicios como ReservaService, ClaseService o FacturaService."
+
+SI TE PREGUNTAN QUE ES UN SERVICIO
+
+Un servicio es una clase que concentra logica de negocio reutilizable. Por ejemplo, ReservaService decide si un cliente puede reservar, si hay plazas, si hay solape de horario y guarda la reserva. Asi el controlador queda mas limpio.
+
+SI TE PREGUNTAN POR MVC
+
+Modelo: entidades y datos, como Usuario, Clase, Reserva o Factura.
+Vista: pantallas Razor que ve el usuario.
+Controlador: recibe la peticion, comprueba permisos y llama al servicio adecuado.
+
+SI TE PREGUNTAN POR ENTITY FRAMEWORK CORE
+
+Es el ORM que uso para mapear clases C# a tablas SQL Server. Me permite trabajar con entidades como Usuario o Reserva sin escribir SQL manual en cada operacion.
+
+SI TE PREGUNTAN POR SEGURIDAD
+
+- Uso autenticacion por cookies.
+- Uso roles con Authorize.
+- Las contrasenas se guardan con hash BCrypt, no en texto plano.
+- Hay bloqueo tras varios intentos fallidos.
+- Hay recuperacion de contrasena por token con caducidad.
+- Los POST usan AntiForgeryToken.
+- Un cliente solo puede ver sus propias facturas.
+
+SI TE PREGUNTAN POR STRIPE
+
+Uso Stripe Checkout en modo test.
+Cuando se crea una suscripcion, se genera factura pendiente.
+El cliente paga con Stripe.
+Al confirmar el pago, la factura se marca como pagada y la suscripcion se activa.
+
+Si preguntan por webhook:
+"Tengo preparado un endpoint para webhook. Para produccion habria que configurarlo en el panel de Stripe con su WebhookSecret. En local he probado principalmente el flujo de retorno de Stripe."
+
+SI TE PREGUNTAN POR SUSCRIPCIONES
+
+La regla principal es que un usuario no puede tener mas de una suscripcion activa o pendiente de pago.
+Ademas, la suscripcion no se activa hasta que se confirma el pago.
+Esto evita que un cliente tenga acceso a reservas sin haber pagado.
+
+SI TE PREGUNTAN POR RESERVAS
+
+Para reservar:
+- El cliente debe tener suscripcion activa.
+- La clase debe estar activa y no pasada.
+- Debe haber plazas.
+- El usuario no debe tener otra reserva en el mismo horario.
+- No puede reservar dos veces la misma clase.
+
+Frase buena:
+"La validacion no esta solo en la vista; esta en ReservaService, porque no se puede confiar solo en el frontend."
+
+SI TE PREGUNTAN POR AFORO
+
+El sistema controla la capacidad maxima.
+Tambien evito editar una clase y poner una capacidad maxima menor que las reservas activas existentes.
+
+SI TE PREGUNTAN POR BAJA LOGICA
+
+Uso baja logica en vez de borrar registros fisicamente.
+Por ejemplo, una clase o usuario puede quedar inactivo, conservando historial.
+Esto es importante en una aplicacion real porque facturas, pagos y reservas no deberian desaparecer sin trazabilidad.
+
+SI TE PREGUNTAN POR FACTURAS PDF
+
+La factura se genera en PDF.
+Se puede visualizar o descargar.
+Ademas se cachea para no regenerarla siempre.
+Cuando el pago se confirma, se envia email con la factura adjunta.
+
+SI TE PREGUNTAN POR EMAILS
+
+Hay emails para:
+- Bienvenida al registrarse.
+- Bloqueo de cuenta.
+- Recuperacion de contrasena.
+- Pago confirmado con factura adjunta.
+- Mensaje directo del administrador a usuarios.
+
+Uso SMTP configurado desde appsettings.
+
+SI TE PREGUNTAN POR CHAT
+
+El chat usa SignalR.
+SignalR permite comunicacion en tiempo real entre servidor y navegador.
+Hay conversaciones entre cliente-entrenador y entrenador-entrenador.
+Los mensajes tienen validacion de contenido y limite de longitud.
+
+SI TE PREGUNTAN POR FRONTEND
+
+Uso Razor, Bootstrap, Bootstrap Icons, SweetAlert2, FullCalendar y CSS propio.
+He intentado que la interfaz sea responsive y que los dashboards y tablas sean claros.
+Tambien hay menu lateral, tema visual y exportaciones uniformes.
+
+SI TE PREGUNTAN POR FIGMA
+
+Los mockups se hicieron en Figma para representar pantallas principales como login, dashboard, clases, facturas y chat. Luego la aplicacion se fue ajustando para parecerse a esos mockups.
+
+SI TE PREGUNTAN POR EXPORTACIONES
+
+Los listados administrativos tienen exportacion a CSV, Excel y PDF.
+Sirve para que un administrador pueda sacar informacion de usuarios, clases, suscripciones o facturas.
+
+SI TE PREGUNTAN POR QUE NO HAS HECHO API REST COMPLETA
+
+Porque el proyecto esta planteado como aplicacion ASP.NET Core MVC, no como SPA.
+Aun asi, uso endpoints JSON/AJAX en partes concretas como calendario, chat y Stripe webhook.
+
+SI TE PREGUNTAN POR DESPLIEGUE
+
+El despliegue previsto es Azure App Service con SQL Server o Azure SQL.
+La configuracion sensible se gestiona mediante appsettings o variables de entorno: cadena de conexion, Stripe y SMTP.
+
+SI TE PREGUNTAN POR COSAS QUE MEJORARIAS
+
+Diria:
+- Tests automaticos.
+- Auditoria completa de acciones administrativas.
+- Webhook Stripe configurado completamente en produccion.
+- Devoluciones y cancelaciones economicas mas avanzadas.
+- Notificaciones persistentes en base de datos.
+- Mejoras de rendimiento si el volumen de mensajes o reservas crece mucho.
+
+SI TE PREGUNTAN "QUE HA SIDO LO MAS DIFICIL"
+
+Respuesta buena:
+"Lo mas dificil fue coordinar reglas de negocio que se cruzan: suscripciones, facturas, pagos y reservas. Por ejemplo, no basta con crear una suscripcion; hay que generar factura, esperar pago, activar la suscripcion y permitir reservas solo cuando corresponde."
+
+SI TE PREGUNTAN "QUE PARTE TE GUSTA MAS"
+
+Respuesta buena:
+"La parte de suscripcion, facturacion y Stripe, porque se parece mucho a un flujo real: se crea una deuda, se paga, se confirma y se envia factura."
+
+SI TE BLOQUEAS
+
+Usa esta frase:
+"No recuerdo ahora mismo el detalle exacto del metodo, pero la idea es que esa regla no esta en la vista, sino en el servicio correspondiente para mantener la logica centralizada."
+
+FRASES COMODIN BUENAS
+
+"Lo hice asi para separar responsabilidades."
+"Esa validacion esta duplicada visualmente en la vista, pero la importante esta en servidor."
+"Para una version real, esto lo reforzaria con tests y auditoria."
+"En local esta preparado para demo, y para produccion habria que configurar variables sensibles y webhook."
+"No borro datos criticos fisicamente porque en gestion real interesa mantener trazabilidad."
+
+ORDEN RECOMENDADO PARA LA DEMO
+
+1. Login como administrador.
+2. Dashboard administrador.
+3. Usuarios.
+4. Clases y calendario.
+5. Suscripciones.
+6. Factura y Stripe.
+7. Login como cliente.
+8. Mis facturas y reservas.
+9. Chat.
+10. Cierre con mejoras futuras.
+
+LO QUE MAS HACE FARDAR
+
+- Stripe test funcionando.
+- Email con factura adjunta.
+- Chat SignalR sin recargar.
+- Calendario de clases.
+- Control de solapes en reservas.
+- Suscripcion pendiente hasta pago.
+- PDF de factura.
+- Exportaciones CSV, Excel y PDF.
+- Roles bien separados.

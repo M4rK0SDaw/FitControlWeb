@@ -5,6 +5,7 @@ using FitControlWeb.Services.Interfaces;
 using FitControlWeb.ViewModels.Reservas;
 using FitControlWeb.ViewModels.Shared;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace FitControlWeb.Services.Implementations;
 
@@ -60,7 +61,10 @@ public class ReservaService : IReservaService
 
     public async Task<ServiceResult> CrearAsync(int usuarioId, int claseId)
     {
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
         var clase = await _context.Clases
+            .Include(c => c.Reservas)
             .FirstOrDefaultAsync(c => c.Id == claseId && c.Activo == true);
 
         if (clase == null)
@@ -90,7 +94,10 @@ public class ReservaService : IReservaService
                 "SOLAPE");
         }
 
-        if (!await HayPlazasAsync(claseId))
+        var capacidadMaxima = clase.CapacidadMaxima ?? 0;
+        var reservasActivas = clase.Reservas.Count(r => r.Activo == true);
+
+        if (capacidadMaxima <= 0 || reservasActivas >= capacidadMaxima)
             return ServiceResult.Fail("No hay plazas disponibles.", "PLAZAS");
 
         var estadoActiva = await _context.EstadoReservas.FirstOrDefaultAsync(e => e.Nombre == "Activa");
@@ -106,6 +113,7 @@ public class ReservaService : IReservaService
             reservaExistente.FechaReserva = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
             return ServiceResult.Ok("Reserva realizada correctamente.");
         }
 
@@ -120,6 +128,7 @@ public class ReservaService : IReservaService
 
         _context.Reservas.Add(reserva);
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return ServiceResult.Ok("Reserva realizada correctamente.");
     }
@@ -388,7 +397,7 @@ public class ReservaService : IReservaService
         {
             Content = bytes,
             ContentType = "text/csv",
-            FileName = "reservas-clase.csv"
+            FileName = ExportFileNameHelper.Build("reservas_clase", "csv")
         });
     }
 
@@ -417,7 +426,7 @@ public class ReservaService : IReservaService
         {
             Content = bytes,
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            FileName = "reservas-clase.xlsx"
+            FileName = ExportFileNameHelper.Build("reservas_clase", "xlsx")
         });
     }
 
@@ -443,7 +452,7 @@ public class ReservaService : IReservaService
             {
                 Content = bytes,
                 ContentType = "application/pdf",
-                FileName = "reservas-clase.pdf"
+                FileName = ExportFileNameHelper.Build("reservas_clase", "pdf")
             });
         }
         catch (Exception ex)

@@ -1,6 +1,8 @@
 using FitControlWeb.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Stripe;
+using Stripe.Checkout;
 using System.Security.Claims;
 
 namespace FitControlWeb.Controllers;
@@ -16,9 +18,9 @@ public class FacturasController : Controller
     }
 
     [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Index(string? search, bool? pagada, int page = 1, int pageSize = 10)
+    public async Task<IActionResult> Index(string? search, bool? pagada, int? metodoPagoId, int page = 1, int pageSize = 10)
     {
-        var vm = await _facturaService.GetIndexViewModelAsync(search, pagada, page, pageSize);
+        var vm = await _facturaService.GetIndexViewModelAsync(search, pagada, metodoPagoId, page, pageSize);
         return View(vm);
     }
 
@@ -78,41 +80,83 @@ public class FacturasController : Controller
     [HttpGet]
     public async Task<IActionResult> StripeSuccess(int facturaId, string session_id)
     {
+        if (!await _facturaService.PuedeVerFacturaAsync(facturaId, GetUsuarioId(), User.IsInRole("Administrador")))
+            return Forbid();
+
         var result = await _facturaService.ConfirmarPagoStripeAsync(facturaId, session_id);
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         return RedirectToAction(nameof(Details), new { id = facturaId });
     }
 
     [HttpGet]
-    public IActionResult StripeCancel(int facturaId)
+    public async Task<IActionResult> StripeCancel(int facturaId)
     {
+        if (!await _facturaService.PuedeVerFacturaAsync(facturaId, GetUsuarioId(), User.IsInRole("Administrador")))
+            return Forbid();
+
         TempData["Error"] = "Pago cancelado en Stripe.";
         return RedirectToAction(nameof(Details), new { id = facturaId });
     }
 
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> ExportCsv(string? search, bool? pagada)
+    [AllowAnonymous]
+    [HttpPost]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> StripeWebhook()
     {
-        var file = await _facturaService.ExportCsvAsync(search, pagada);
+        var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        var webhookSecret = HttpContext.RequestServices
+            .GetRequiredService<IConfiguration>()["Stripe:WebhookSecret"];
+
+        Event stripeEvent;
+
+        try
+        {
+            stripeEvent = string.IsNullOrWhiteSpace(webhookSecret)
+                ? EventUtility.ParseEvent(json)
+                : EventUtility.ConstructEvent(
+                    json,
+                    Request.Headers["Stripe-Signature"],
+                    webhookSecret);
+        }
+        catch (Exception)
+        {
+            return BadRequest();
+        }
+
+        if (stripeEvent.Type == "checkout.session.completed" &&
+            stripeEvent.Data.Object is Session session &&
+            session.PaymentStatus == "paid" &&
+            int.TryParse(session.ClientReferenceId, out var facturaId))
+        {
+            await _facturaService.ConfirmarPagoStripeAsync(facturaId, session.Id);
+        }
+
+        return Ok();
+    }
+
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> ExportCsv(string? search, bool? pagada, int? metodoPagoId)
+    {
+        var file = await _facturaService.ExportCsvAsync(search, pagada, metodoPagoId);
         return File(file.Content, file.ContentType, file.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> ExportExcel(string? search, bool? pagada)
+    public async Task<IActionResult> ExportExcel(string? search, bool? pagada, int? metodoPagoId)
     {
-        var file = await _facturaService.ExportExcelAsync(search, pagada);
+        var file = await _facturaService.ExportExcelAsync(search, pagada, metodoPagoId);
         return File(file.Content, file.ContentType, file.FileName);
     }
 
     [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> ExportPdf(string? search, bool? pagada)
+    public async Task<IActionResult> ExportPdf(string? search, bool? pagada, int? metodoPagoId)
     {
-        var result = await _facturaService.ExportPdfAsync(search, pagada);
+        var result = await _facturaService.ExportPdfAsync(search, pagada, metodoPagoId);
 
         if (!result.Success || result.Data == null)
         {
             TempData["Error"] = result.Message;
-            return RedirectToAction(nameof(Index), new { search, pagada });
+            return RedirectToAction(nameof(Index), new { search, pagada, metodoPagoId });
         }
 
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);

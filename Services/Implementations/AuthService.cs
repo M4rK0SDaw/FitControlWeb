@@ -39,7 +39,7 @@ public class AuthService : IAuthService
                 usuario.RefreshTokenExpiryTime <= DateTime.Now)
             {
                 usuario.RefreshToken = CrearToken();
-                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
+                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(15);
                 await _context.SaveChangesAsync();
             }
 
@@ -69,7 +69,7 @@ public class AuthService : IAuthService
                 usuario.Bloqueado = true;
                 cuentaBloqueada = true;
                 usuario.RefreshToken = CrearToken();
-                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
+                usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(15);
             }
 
             await _context.SaveChangesAsync();
@@ -178,7 +178,7 @@ public class AuthService : IAuthService
             return ServiceResult<Usuario>.Fail("Usuario no encontrado.", "USUARIO_NO_EXISTE");
 
         usuario.RefreshToken = CrearToken();
-        usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(1);
+        usuario.RefreshTokenExpiryTime = DateTime.Now.AddMinutes(15);
 
         await _context.SaveChangesAsync();
 

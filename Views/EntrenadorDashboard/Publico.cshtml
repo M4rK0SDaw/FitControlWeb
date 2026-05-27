@@ -2,6 +2,11 @@
 
 @{
     ViewData["Title"] = "Perfil del entrenador";
+    var usuarioActualId = int.TryParse(
+        User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+        out var parsedUsuarioId)
+        ? parsedUsuarioId
+        : 0;
 }
 
 @section Styles {
@@ -41,7 +46,7 @@
         </div>
     </div>
 
-    @if (User.IsInRole("Cliente"))
+    @if ((User.IsInRole("Cliente") || User.IsInRole("Entrenador")) && Model.Id != usuarioActualId)
     {
         <div class="mt-4">
             <a asp-controller="Mensajes" asp-action="Conversacion" asp-route-usuarioId="@Model.Id" class="btn btn-orange">

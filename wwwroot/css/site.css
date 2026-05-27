@@ -74,6 +74,14 @@ a {
     color: #fff;
 }
 
+.brand-logo-img {
+    width: 118px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+}
+
 .brand-mark {
     flex: 0 0 42px;
     width: 42px;
@@ -564,6 +572,10 @@ body.sidebar-collapsed .brand-link {
     justify-content: center;
 }
 
+body.sidebar-collapsed .brand-logo-img {
+    width: 46px;
+}
+
 body.sidebar-collapsed .sidebar-brand {
     justify-content: center;
 }
@@ -597,9 +609,7 @@ body.dark-mode .info-box,
 body.dark-mode .filter-box,
 body.dark-mode .mobile-item,
 body.dark-mode .class-card,
-body.dark-mode .compact-row,
-body.dark-mode .table,
-body.dark-mode .table-modern {
+body.dark-mode .compact-row {
     background: #191d25 !important;
     border-color: rgba(255,255,255,.1) !important;
     color: #e5e7eb;
@@ -625,7 +635,6 @@ body.dark-mode .page-title,
 body.dark-mode .info-value,
 body.dark-mode .mobile-item-title,
 body.dark-mode .mobile-item-value,
-/*body.dark-mode .table-modern tbody td,*/
 body.dark-mode .form-label {
     color: #e5e7eb !important;
 }
@@ -641,13 +650,16 @@ body.dark-mode .form-control::placeholder {
     color: #9ca3af;
 }
 
-/*
-    body.dark-mode .badge.bg-light,
-body.dark-mode .btn-outline-dark {
-    color: #e5e7eb !important;
-    border-color: rgba(255,255,255,.22) !important;
-    background: rgba(255,255,255,.06) !important;
-}*/
+body.dark-mode .btn-outline-dark:hover,
+body.dark-mode .btn-outline-secondary:hover,
+body.dark-mode .btn-outline-primary:hover,
+body.dark-mode .btn-outline-success:hover,
+body.dark-mode .btn-outline-danger:hover,
+body.dark-mode .btn-outline-warning:hover {
+    color: #fff !important;
+    border-color: var(--gym-orange) !important;
+    background: var(--gym-orange) !important;
+}
 
 body.dark-mode .alert-info,
 body.dark-mode .alert-warning,
@@ -685,11 +697,44 @@ body.dark-mode .quick-pill {
 }
 
 body.dark-mode .table-dark {
-    --bs-table-bg: black;
+    --bs-table-bg: #0f1218;
+    --bs-table-color: #f8fafc;
 }
 
-body.dark-mode .table-modern tbody tr:hover {
-    background: rgba(255,122,0,.12);
+body.dark-mode .table,
+body.dark-mode .table-modern {
+    --bs-table-bg: #fff;
+    --bs-table-color: #111827;
+    --bs-table-border-color: #edf2f7;
+    background: #fff !important;
+    border-color: #edf2f7 !important;
+    color: #111827 !important;
+}
+
+body.dark-mode .table-modern tbody td,
+body.dark-mode .table td,
+body.dark-mode .table th {
+    background-color: #fff !important;
+    border-color: #edf2f7 !important;
+    color: #111827 !important;
+}
+
+body.dark-mode .table-modern tbody tr:hover td,
+body.dark-mode .table-hover tbody tr:hover td {
+    background-color: color-mix(in srgb, var(--gym-orange) 10%, #fff) !important;
+    color: #111827 !important;
+}
+
+body.dark-mode .table .text-muted,
+body.dark-mode .table-modern .text-muted {
+    color: #6b7280 !important;
+}
+
+body.dark-mode .badge.bg-light,
+body.dark-mode .badge.text-dark,
+body.dark-mode .table .text-dark,
+body.dark-mode .table-modern .text-dark {
+    color: #111318 !important;
 }
 
 body.dark-mode .notification-item {

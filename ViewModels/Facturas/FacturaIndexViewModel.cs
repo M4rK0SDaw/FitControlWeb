@@ -1,4 +1,5 @@
 using FitControlWeb.Models.Entities;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace FitControlWeb.ViewModels.Facturas;
 
@@ -7,6 +8,8 @@ public class FacturaIndexViewModel
     public List<Factura> Facturas { get; set; } = new();
     public string? Search { get; set; }
     public bool? Pagada { get; set; }
+    public int? MetodoPagoId { get; set; }
+    public List<SelectListItem> MetodosPago { get; set; } = new();
     public int CurrentPage { get; set; }
     public int PageSize { get; set; }
     public int TotalPages { get; set; }

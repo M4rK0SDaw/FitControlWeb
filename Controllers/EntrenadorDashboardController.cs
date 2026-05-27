@@ -6,7 +6,6 @@ using System.Security.Claims;
 
 namespace FitControlWeb.Controllers;
 
-[Authorize(Roles = "Entrenador")]
 public class EntrenadorDashboardController : Controller
 {
     private readonly IEntrenadorDashboardService _entrenadorDashboardService;
@@ -16,6 +15,7 @@ public class EntrenadorDashboardController : Controller
         _entrenadorDashboardService = entrenadorDashboardService;
     }
 
+    [Authorize(Roles = "Entrenador")]
     public async Task<IActionResult> Index()
     {
         var vm = await _entrenadorDashboardService.GetDashboardAsync(GetUsuarioId());
@@ -27,6 +27,7 @@ public class EntrenadorDashboardController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Entrenador")]
     public async Task<IActionResult> Perfil()
     {
         var vm = await _entrenadorDashboardService.GetPerfilAsync(GetUsuarioId());
@@ -39,6 +40,7 @@ public class EntrenadorDashboardController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Entrenador")]
     public async Task<IActionResult> Perfil(EntrenadorPerfilViewModel model)
     {
         ModelState.Remove(nameof(model.Foto));

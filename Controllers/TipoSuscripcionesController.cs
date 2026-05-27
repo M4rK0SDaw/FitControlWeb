@@ -41,6 +41,8 @@ public class TipoSuscripcionesController : Controller
         if (tipo == null)
             return NotFound();
 
+        ViewBag.FacturasPorSuscripcion = await _tipoSuscripcionService.GetFacturasPorSuscripcionAsync(id);
+
         return View(tipo);
     }
 

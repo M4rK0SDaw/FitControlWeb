@@ -1,0 +1,166 @@
+PRESENTACION FITCONTROL WEB - MAXIMO 15 MINUTOS
+
+Duracion recomendada: 12-14 minutos, dejando 1-3 minutos para preguntas.
+
+1. INTRODUCCION - 1 minuto
+
+Buenos dias, mi proyecto se llama FitControl Web.
+Es una aplicacion web para la gestion integral de un gimnasio.
+
+La idea principal es centralizar en una sola plataforma la gestion de usuarios, entrenadores, clases, reservas, suscripciones, facturas, pagos y comunicacion interna.
+
+La aplicacion trabaja con tres perfiles: administrador, entrenador y cliente. Cada uno tiene permisos y pantallas diferentes.
+
+2. OBJETIVO DEL PROYECTO - 1 minuto
+
+El objetivo no era hacer solo un CRUD, sino una aplicacion lo mas realista posible.
+
+Queria demostrar:
+- Autenticacion y roles.
+- Gestion de datos con Entity Framework Core.
+- Logica de negocio separada en servicios.
+- Reservas con control de plazas y solapes.
+- Suscripciones y facturacion.
+- Pago real en modo test con Stripe.
+- Emails automaticos.
+- Chat en tiempo real con SignalR.
+- Interfaz responsive y usable.
+
+3. TECNOLOGIAS - 1 minuto
+
+El backend esta hecho con C# y ASP.NET Core MVC.
+Para la base de datos uso SQL Server con Entity Framework Core.
+
+En frontend uso Razor Views, Bootstrap, CSS propio, Bootstrap Icons, SweetAlert y FullCalendar.
+
+Tambien he integrado:
+- Stripe para pagos.
+- SMTP Gmail para correos.
+- SignalR para chat.
+- Exportaciones a CSV, Excel y PDF.
+
+4. ARQUITECTURA - 2 minutos
+
+La aplicacion sigue el patron MVC.
+
+Las vistas Razor muestran la informacion al usuario.
+Los controladores reciben las peticiones, validan permisos y llaman a servicios.
+Los servicios contienen la logica de negocio.
+Entity Framework Core se encarga de comunicarse con SQL Server.
+
+Esta separacion es importante porque evita tener toda la logica en los controladores. Por ejemplo, la reserva de una clase no se decide en la vista ni en el controlador, sino en ReservaService.
+
+Ejemplos de servicios:
+- AuthService gestiona login, bloqueo y recuperacion.
+- ClaseService valida horarios y aforo.
+- ReservaService controla plazas y solapes.
+- SuscripcionService evita suscripciones duplicadas.
+- FacturaService genera facturas, confirma Stripe y envia email.
+- ChatService controla conversaciones y mensajes.
+
+5. DEMO ADMINISTRADOR - 3 minutos
+
+Entraria como administrador.
+
+Primero mostraria el dashboard general:
+- KPIs del gimnasio.
+- Resumen de reservas, usuarios y facturacion.
+- Acceso a gestion administrativa.
+
+Despues mostraria gestion de usuarios:
+- Crear usuario.
+- Roles.
+- Baja logica.
+- Reactivar.
+- Envio de email desde la plataforma.
+
+Luego gestion de clases:
+- Filtros.
+- Calendario.
+- Crear o editar clase.
+- Validaciones importantes: no se permite solape de entrenador, no se permite mover clases a fechas pasadas y no se puede poner aforo menor que las reservas activas.
+
+Tambien mostrar las exportaciones:
+- CSV.
+- Excel.
+- PDF.
+
+6. DEMO CLIENTE - 3 minutos
+
+Entraria como cliente.
+
+Mostraria el dashboard cliente:
+- Suscripcion.
+- Reservas.
+- Facturas.
+
+Luego mostraria contratar suscripcion.
+Explicaria que una suscripcion queda pendiente hasta que se paga, y no activa automaticamente. Esto es importante porque evita que el cliente use servicios sin haber pagado.
+
+Despues mostraria una factura:
+- Ver detalle.
+- Ver PDF.
+- Pagar con Stripe test.
+
+Tras el pago:
+- La factura se marca como pagada.
+- La suscripcion se activa.
+- Se envia email de confirmacion con la factura adjunta.
+
+Luego mostraria reserva de clases:
+- Solo salen clases disponibles.
+- No se puede reservar sin suscripcion activa.
+- No se puede reservar una clase completa.
+- No se puede reservar dos clases en el mismo horario.
+
+7. DEMO ENTRENADOR - 1 minuto
+
+Entraria como entrenador.
+
+Mostraria:
+- Dashboard del entrenador.
+- Sus clases asignadas.
+- Reservas de sus clases.
+- Perfil editable.
+- Acceso a perfiles publicos de entrenadores.
+- Mensajeria con clientes o entrenadores.
+
+8. CHAT Y EMAILS - 1 minuto
+
+Mostraria el chat lateral o la vista de conversacion.
+
+Explicaria que el chat usa SignalR, por lo que los mensajes pueden llegar en tiempo real sin recargar la pagina.
+
+Tambien destacaria los correos:
+- Bienvenida al registrarse.
+- Cuenta bloqueada tras intentos fallidos.
+- Recuperacion de contrasena.
+- Pago confirmado con factura adjunta.
+
+9. SEGURIDAD Y VALIDACIONES - 1 minuto
+
+Aspectos importantes:
+- Autenticacion por cookies.
+- Roles con Authorize.
+- Hash de contrasenas con BCrypt.
+- Bloqueo por intentos fallidos.
+- Tokens de recuperacion con caducidad.
+- Validaciones en servicios, no solo en vistas.
+- Control de acceso a facturas: un cliente solo puede ver sus propias facturas.
+- Anti-forgery token en formularios POST.
+
+10. CIERRE - 1 minuto
+
+Como conclusion, FitControl Web cumple el objetivo de ser una aplicacion web completa para un gimnasio.
+
+No es solo una maqueta visual: tiene base de datos, reglas de negocio, pagos, emails, PDFs, exportaciones, chat y roles.
+
+Como mejoras futuras dejaria:
+- Webhook de Stripe configurado en produccion.
+- Auditoria completa.
+- Tests automaticos.
+- Gestion avanzada de devoluciones.
+- Notificaciones persistentes en base de datos.
+
+Frase final:
+"En resumen, he intentado que el proyecto se parezca lo maximo posible a una aplicacion real de gestion, no solo a un ejercicio academico."

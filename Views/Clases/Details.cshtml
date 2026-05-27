@@ -12,6 +12,11 @@
                         "bg-success";
 
     var estaLlena = reservas >= capacidad;
+    var usuarioActualId = int.TryParse(
+        User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+        out var parsedUsuarioId)
+        ? parsedUsuarioId
+        : 0;
 }
 
 @section Styles {
@@ -96,21 +101,24 @@
                         @if (Model.Entrenador != null)
                         {
                             <div class="d-flex gap-2 flex-wrap">
-                                @if (User.IsInRole("Cliente"))
+                                @if (User.IsInRole("Cliente") || User.IsInRole("Entrenador"))
                                 {
                                     <a asp-controller="EntrenadorDashboard"
                                        asp-action="Publico"
                                        asp-route-id="@Model.Entrenador.Id"
                                        class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-person-badge"></i> Ver perfil
-                                    </a>
+                                         <i class="bi bi-person-badge"></i> Ver perfil
+                                     </a>
 
-                                    <a asp-controller="Mensajes"
-                                       asp-action="Conversacion"
-                                       asp-route-usuarioId="@Model.Entrenador.Id"
-                                       class="btn btn-sm btn-outline-dark">
-                                        <i class="bi bi-chat-dots"></i> Mensaje
-                                    </a>
+                                    @if (Model.Entrenador.Id != usuarioActualId)
+                                    {
+                                        <a asp-controller="Mensajes"
+                                           asp-action="Conversacion"
+                                           asp-route-usuarioId="@Model.Entrenador.Id"
+                                           class="btn btn-sm btn-outline-dark">
+                                            <i class="bi bi-chat-dots"></i> Mensaje
+                                        </a>
+                                    }
                                 }
                                 else
                                 {
