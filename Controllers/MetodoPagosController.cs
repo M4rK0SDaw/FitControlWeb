@@ -127,8 +127,8 @@ public class MetodoPagosController : Controller
 
         TempData[result.Success ? "Success" : "Error"] = result.Message;
 
-        return !string.IsNullOrWhiteSpace(returnUrl)
-            ? Redirect(returnUrl)
+        return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl)
             : RedirectToAction(nameof(Index));
     }
 

@@ -105,6 +105,35 @@ public class EmailTemplateService : IEmailTemplateService
         };
     }
 
+    public EmailTemplateMessage EmailClaseCancelada(string nombre, Clase clase)
+    {
+        var safeName = Encode(nombre);
+        var safeClase = Encode(clase.Nombre);
+        var fecha = Encode(clase.Fecha.ToString("dd/MM/yyyy"));
+        var horario = Encode($"{clase.HoraInicio:HH\\:mm} - {clase.HoraFin:HH\\:mm}");
+
+        return new EmailTemplateMessage
+        {
+            Subject = $"Clase suspendida - {clase.Nombre}",
+            HtmlBody = $$"""
+                <p>Hola {{safeName}},</p>
+                <p>Te informamos de que la clase <strong>{{safeClase}}</strong> ha sido suspendida y no se realizara.</p>
+                <table role="presentation" style="width:100%;border-collapse:collapse;margin:18px 0;background-color:#fff7f0;border:1px solid #ffd9bd;border-radius:12px;overflow:hidden;">
+                    <tr>
+                        <td style="padding:12px 16px;color:#64748b;">Fecha</td>
+                        <td style="padding:12px 16px;text-align:right;font-weight:700;color:#111827;">{{fecha}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:12px 16px;color:#64748b;border-top:1px solid #ffd9bd;">Horario</td>
+                        <td style="padding:12px 16px;text-align:right;font-weight:700;color:#111827;border-top:1px solid #ffd9bd;">{{horario}}</td>
+                    </tr>
+                </table>
+                <p>Tu reserva asociada ha quedado cancelada automaticamente en la plataforma.</p>
+                <p>Disculpa las molestias.</p>
+                """
+        };
+    }
+
     private static string Encode(string? value)
     {
         return WebUtility.HtmlEncode(value ?? string.Empty);

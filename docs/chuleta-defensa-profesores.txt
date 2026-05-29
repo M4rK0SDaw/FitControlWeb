@@ -138,7 +138,7 @@ Diria:
 - Auditoria completa de acciones administrativas.
 - Webhook Stripe configurado completamente en produccion.
 - Devoluciones y cancelaciones economicas mas avanzadas.
-- Notificaciones persistentes en base de datos.
+- Notificaciones internas reutilizando conversaciones y mensajes del sistema.
 - Mejoras de rendimiento si el volumen de mensajes o reservas crece mucho.
 
 SI TE PREGUNTAN "QUE HA SIDO LO MAS DIFICIL"

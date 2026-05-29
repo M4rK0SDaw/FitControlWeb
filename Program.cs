@@ -95,6 +95,7 @@ builder.Services.AddScoped<ITipoSuscripcionService, TipoSuscripcionService>();
 builder.Services.AddScoped<IMetodoPagoService, MetodoPagoService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<INotificacionService, NotificacionService>();
 
 
 
@@ -120,7 +121,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.MapHub<ChatHub>("/chatHub");
 

@@ -22,7 +22,9 @@ public class EntrenadorDashboardService : IEntrenadorDashboardService
 
     public async Task<EntrenadorDashboardViewModel?> GetDashboardAsync(int entrenadorId)
     {
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
 
         var entrenador = await _context.Usuarios
             .Include(u => u.Rol)
@@ -41,7 +43,8 @@ public class EntrenadorDashboardService : IEntrenadorDashboardService
 
         var totalClases = await clasesBase.CountAsync();
         var clasesHoy = await clasesBase.CountAsync(c => c.Fecha == hoy);
-        var proximasClases = await clasesBase.CountAsync(c => c.Fecha >= hoy);
+        var proximasClases = await clasesBase.CountAsync(c =>
+            c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual));
 
         var clasesParaOcupacion = await clasesBase.ToListAsync();
 
@@ -68,7 +71,7 @@ public class EntrenadorDashboardService : IEntrenadorDashboardService
             .Where(c =>
                 c.EntrenadorId == entrenadorId &&
                 c.Activo == true &&
-                c.Fecha >= hoy)
+                (c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual)))
             .OrderBy(c => c.Fecha)
             .ThenBy(c => c.HoraInicio)
             .Take(8)

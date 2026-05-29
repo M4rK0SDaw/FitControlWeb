@@ -546,6 +546,11 @@ a {
     color: #fff;
 }
 
+.bg-orange {
+    background-color: var(--gym-orange) !important;
+    color: #fff !important;
+}
+
 body.sidebar-collapsed .sidebar {
     width: var(--sidebar-collapsed-width);
 }
@@ -727,7 +732,7 @@ body.dark-mode .table-hover tbody tr:hover td {
 
 body.dark-mode .table .text-muted,
 body.dark-mode .table-modern .text-muted {
-    color: #6b7280 !important;
+    color: #111827 !important;
 }
 
 body.dark-mode .badge.bg-light,
@@ -824,6 +829,27 @@ body.dark-mode .notification-item {
 
     .content-area {
         padding: 14px;
+    }
+
+    html {
+        font-size: 15px;
+    }
+
+    .topbar h5 {
+        font-size: 1rem;
+    }
+
+    .sidebar {
+        padding: 14px;
+    }
+
+    .sidebar-link {
+        min-height: 44px;
+        padding: 10px 12px;
+    }
+
+    .btn {
+        font-size: .92rem;
     }
 
     .chat-float-btn {

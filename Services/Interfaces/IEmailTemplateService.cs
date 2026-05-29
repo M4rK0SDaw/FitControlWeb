@@ -10,4 +10,5 @@ public interface IEmailTemplateService
     EmailTemplateMessage EmailRestablecerContrasenya(string nombre, string resetLink); // BuildResetPasswordEmail(string nombre, string resetLink);
     EmailTemplateMessage EmailAdminDirecto(string nombre, string subject, string message); // BuildAdminDirectEmail(string nombre, string subject, string message);
     EmailTemplateMessage EmailPagoFactura(string nombre, Factura factura);
+    EmailTemplateMessage EmailClaseCancelada(string nombre, Clase clase);
 }

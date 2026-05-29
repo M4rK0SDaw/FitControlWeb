@@ -160,7 +160,7 @@ Como mejoras futuras dejaria:
 - Auditoria completa.
 - Tests automaticos.
 - Gestion avanzada de devoluciones.
-- Notificaciones persistentes en base de datos.
+- Notificaciones internas reutilizando conversaciones y mensajes del sistema.
 
 Frase final:
 "En resumen, he intentado que el proyecto se parezca lo maximo posible a una aplicacion real de gestion, no solo a un ejercicio academico."

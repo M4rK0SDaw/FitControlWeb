@@ -103,11 +103,16 @@
                         <span asp-validation-for="RolId" class="text-danger small"></span>
                     </div>
 
-                    <div class="form-check mt-4">
-                        <input asp-for="Activo" class="form-check-input" />
-                        <label asp-for="Activo" class="form-check-label">
-                            Usuario activo
-                        </label>
+                    <input asp-for="Activo" type="hidden" />
+
+                    <div class="mt-4">
+                        <div class="form-label mb-2">Estado</div>
+                        <span class="badge @(Model.Activo ? "bg-success" : "bg-secondary")">
+                            @(Model.Activo ? "Activo" : "Inactivo")
+                        </span>
+                        <small class="text-muted d-block mt-2">
+                            La baja y reactivacion se hacen desde las acciones del usuario para mantener reservas y suscripciones coherentes.
+                        </small>
                     </div>
                 </div>
             </div>

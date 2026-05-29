@@ -13,10 +13,23 @@ namespace FitControlWeb.Services.Implementations;
 public class ClaseService : IClaseService
 {
     private readonly FitControlDbContext _context;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly INotificacionService _notificacionService;
+    private readonly ILogger<ClaseService> _logger;
 
-    public ClaseService(FitControlDbContext context)
+    public ClaseService(
+        FitControlDbContext context,
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
+        INotificacionService notificacionService,
+        ILogger<ClaseService> logger)
     {
         _context = context;
+        _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
+        _notificacionService = notificacionService;
+        _logger = logger;
     }
 
     public async Task<List<Clase>> GetAllAsync()
@@ -39,14 +52,20 @@ public class ClaseService : IClaseService
 
     public async Task<ServiceResult> CreateAsync(Clase clase)
     {
-        if (clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
-            return ServiceResult.Fail("No puedes crear una clase en una fecha pasada.", "CLASE");
+        if (ClaseFinalizada(clase.Fecha, clase.HoraFin, DateTime.Now))
+            return ServiceResult.Fail("No puedes crear una clase en una fecha u hora ya vencida.", "CLASE");
 
         if (clase.HoraFin <= clase.HoraInicio)
             return ServiceResult.Fail("La hora de fin debe ser posterior a la hora de inicio.", "HORARIO");
 
         if ((clase.CapacidadMinima ?? 0) > (clase.CapacidadMaxima ?? 0))
             return ServiceResult.Fail("La capacidad minima no puede ser mayor que la maxima.", "CAPACIDAD");
+
+        if (await ClaseTieneSolapeGlobalAsync(clase.Fecha, clase.HoraInicio, clase.HoraFin))
+        {
+            // Decision de negocio: FitControl no modela salas, por tanto el gimnasio solo admite una clase simultanea.
+            return ServiceResult.Fail("Ya existe una clase activa en ese horario. Como no se gestionan salas, no se permiten clases simultaneas.", "SOLAPE");
+        }
 
         if (await EntrenadorTieneSolapeAsync(clase.EntrenadorId, clase.Fecha, clase.HoraInicio, clase.HoraFin))
             return ServiceResult.Fail("El entrenador ya tiene una clase en ese horario.", "SOLAPE");
@@ -55,13 +74,36 @@ public class ClaseService : IClaseService
         _context.Clases.Add(clase);
         await _context.SaveChangesAsync();
 
-        return ServiceResult.Ok("Clase creada correctamente.");
+        var clientesIds = await _context.Usuarios
+            .AsNoTracking()
+            .Where(u => u.Activo == true && u.Rol.Nombre == "Cliente")
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        if (clientesIds.Count > 0)
+        {
+            await _notificacionService.CrearParaUsuariosAsync(
+                clientesIds,
+                "Nueva clase disponible",
+                $"Se ha creado la clase {clase.Nombre} para el {clase.Fecha:dd/MM/yyyy} a las {clase.HoraInicio:HH\\:mm}. Ya puedes revisarla y reservar si tienes suscripcion activa.",
+                "info",
+                $"/Clases/Details/{clase.Id}");
+        }
+
+        var mensaje = clientesIds.Count > 0
+            ? $"Clase creada correctamente. Se ha notificado a {clientesIds.Count} cliente(s)."
+            : "Clase creada correctamente.";
+
+        return ServiceResult.Ok(mensaje);
     }
 
     public async Task<ServiceResult> UpdateAsync(Clase clase)
     {
-        if (clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
-            return ServiceResult.Fail("No puedes mover una clase a una fecha pasada.", "CLASE");
+        if (clase.Activo != true)
+            return ServiceResult.Fail("No puedes editar una clase inactiva.", "CLASE");
+
+        if (ClaseFinalizada(clase.Fecha, clase.HoraFin, DateTime.Now))
+            return ServiceResult.Fail("No puedes mover una clase a una fecha u hora ya vencida.", "CLASE");
 
         if (clase.HoraFin <= clase.HoraInicio)
             return ServiceResult.Fail("La hora de fin debe ser posterior a la hora de inicio.", "HORARIO");
@@ -77,6 +119,12 @@ public class ClaseService : IClaseService
             return ServiceResult.Fail(
                 $"La capacidad maxima no puede ser menor que las {reservasActivas} reservas activas actuales.",
                 "CAPACIDAD");
+        }
+
+        if (await ClaseTieneSolapeGlobalAsync(clase.Fecha, clase.HoraInicio, clase.HoraFin, clase.Id))
+        {
+            // Decision de negocio: FitControl no modela salas, por tanto el gimnasio solo admite una clase simultanea.
+            return ServiceResult.Fail("Ya existe una clase activa en ese horario. Como no se gestionan salas, no se permiten clases simultaneas.", "SOLAPE");
         }
 
         if (await EntrenadorTieneSolapeAsync(clase.EntrenadorId, clase.Fecha, clase.HoraInicio, clase.HoraFin, clase.Id))
@@ -112,6 +160,12 @@ public class ClaseService : IClaseService
 
         if (clase == null)
             return ServiceResult.Fail("La clase no existe.", "CLASE");
+
+        if (clase.Activo != true)
+            return ServiceResult.Fail("No puedes editar una clase inactiva.", "CLASE");
+
+        if (ClaseFinalizada(clase.Fecha, clase.HoraFin, DateTime.Now))
+            return ServiceResult.Fail("Las clases pasadas o ya finalizadas se mantienen como historico y no se pueden editar.", "CLASE");
 
         clase.Nombre = model.Nombre;
         clase.Fecha = model.Fecha;
@@ -150,6 +204,7 @@ public class ClaseService : IClaseService
     {
         var clase = await _context.Clases
             .Include(c => c.Reservas)
+                .ThenInclude(r => r.Usuario)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (clase == null)
@@ -174,6 +229,11 @@ public class ClaseService : IClaseService
             .FirstOrDefaultAsync();
 
         var reservasActualizadas = 0;
+        var clientesANotificar = clase.Reservas
+            .Where(r => r.Activo == true && r.Usuario != null)
+            .Select(r => (r.Usuario.Id, r.Usuario.Nombre, r.Usuario.Email))
+            .DistinctBy(u => u.Id)
+            .ToList();
 
         foreach (var reserva in clase.Reservas.Where(r => r.Activo == true))
         {
@@ -190,17 +250,44 @@ public class ClaseService : IClaseService
         clase.FechaBaja = ahora;
 
         await _context.SaveChangesAsync();
+        await NotificarClaseCanceladaAsync(clase, clientesANotificar);
 
-        return ServiceResult.Ok(
-            reservasActualizadas == 1
-                ? "Clase dada de baja y 1 reserva actualizada correctamente."
-                : $"Clase dada de baja y {reservasActualizadas} reservas actualizadas correctamente.");
+        // La baja de clase conserva el historico y avisa a cada cliente afectado desde el panel de notificaciones.
+        if (clientesANotificar.Count > 0)
+        {
+            await _notificacionService.CrearParaUsuariosAsync(
+                clientesANotificar.Select(c => c.Id),
+                "Clase suspendida",
+                $"La clase {clase.Nombre} del {clase.Fecha:dd/MM/yyyy} a las {clase.HoraInicio:HH\\:mm} ha sido suspendida. Tu reserva se ha cancelado automaticamente.",
+                "warning",
+                $"/Clases/Details/{clase.Id}");
+        }
+
+        var mensajeReservas = reservasActualizadas == 1
+            ? "1 reserva actualizada"
+            : $"{reservasActualizadas} reservas actualizadas";
+
+        var mensajeEmails = clientesANotificar.Count == 1
+            ? "1 cliente notificado"
+            : $"{clientesANotificar.Count} clientes notificados";
+
+        return ServiceResult.Ok($"Clase dada de baja correctamente: {mensajeReservas} y {mensajeEmails}.");
     }
 
     public async Task<bool> EntrenadorTieneSolapeAsync(int entrenadorId, DateOnly fecha, TimeOnly horaInicio, TimeOnly horaFin, int? claseIdExcluir = null)
     {
         return await _context.Clases.AnyAsync(c =>
             c.EntrenadorId == entrenadorId &&
+            c.Fecha == fecha &&
+            c.Activo == true &&
+            (!claseIdExcluir.HasValue || c.Id != claseIdExcluir.Value) &&
+            horaInicio < c.HoraFin &&
+            horaFin > c.HoraInicio);
+    }
+
+    public async Task<bool> ClaseTieneSolapeGlobalAsync(DateOnly fecha, TimeOnly horaInicio, TimeOnly horaFin, int? claseIdExcluir = null)
+    {
+        return await _context.Clases.AnyAsync(c =>
             c.Fecha == fecha &&
             c.Activo == true &&
             (!claseIdExcluir.HasValue || c.Id != claseIdExcluir.Value) &&
@@ -532,6 +619,30 @@ public class ClaseService : IClaseService
         }
 
         return query;
+    }
+
+    private async Task NotificarClaseCanceladaAsync(Clase clase, IEnumerable<(int Id, string Nombre, string Email)> clientes)
+    {
+        foreach (var cliente in clientes)
+        {
+            try
+            {
+                var template = _emailTemplateService.EmailClaseCancelada(cliente.Nombre, clase);
+                await _emailService.SendAsync(cliente.Email, template.Subject, template.HtmlBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo notificar la baja de la clase {ClaseId} al cliente {Email}", clase.Id, cliente.Email);
+            }
+        }
+    }
+
+    private static bool ClaseFinalizada(DateOnly fecha, TimeOnly horaFin, DateTime ahora)
+    {
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+
+        return fecha < hoy || (fecha == hoy && horaFin <= horaActual);
     }
 
     private static string[] GetFiltrosExport(string search, int? entrenadorId, int? especialidadId, string? estado)

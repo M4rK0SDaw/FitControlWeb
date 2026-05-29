@@ -7,6 +7,8 @@ namespace FitControlWeb.Services.Implementations;
 
 public class ChatService : IChatService
 {
+    private const string AvisoPrefix = "[Aviso]";
+
     private readonly FitControlDbContext _context;
 
     public ChatService(FitControlDbContext context)
@@ -21,7 +23,9 @@ public class ChatService : IChatService
             .Include(c => c.Usuario2)
             .Include(c => c.Mensajes)
             .Where(c => c.Usuario1Id == usuarioId || c.Usuario2Id == usuarioId)
+            .Where(c => c.Mensajes.Any(m => !m.Contenido.StartsWith(AvisoPrefix)))
             .OrderByDescending(c => c.Mensajes
+                .Where(m => !m.Contenido.StartsWith(AvisoPrefix))
                 .OrderByDescending(m => m.FechaEnvio)
                 .Select(m => m.FechaEnvio)
                 .FirstOrDefault())
@@ -203,6 +207,7 @@ public class ChatService : IChatService
             .CountAsync(m =>
                 m.RemitenteId != usuarioId &&
                 m.Leido != true &&
+                !m.Contenido.StartsWith(AvisoPrefix) &&
                 (
                     m.Conversacion.Usuario1Id == usuarioId ||
                     m.Conversacion.Usuario2Id == usuarioId

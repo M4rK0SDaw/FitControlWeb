@@ -26,6 +26,16 @@
             font-size: 1.15rem;
             font-weight: 800;
         }
+
+        @@media (max-width: 767.98px) {
+            .clases-view-switch [data-view="calendar"] {
+                display: none;
+            }
+
+            #clasesCalendarWrap {
+                display: none !important;
+            }
+        }
     </style>
 }
 
@@ -455,8 +465,8 @@
                 const form = this.closest('form');
 
                 Swal.fire({
-                    title: '¿Dar de baja esta clase?',
-                    text: 'La clase no se borrara fisicamente, quedara inactiva.',
+                    title: 'Dar de baja esta clase',
+                    text: 'La clase quedara inactiva, sus reservas activas se cancelaran y se avisara por email a los clientes afectados.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ff7a00',

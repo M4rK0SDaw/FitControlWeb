@@ -11,17 +11,20 @@ public class UsuariosController : Controller
     private readonly IUsuarioService _usuarioService;
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
+    private readonly INotificacionService _notificacionService;
     private readonly ILogger<UsuariosController> _logger;
 
     public UsuariosController(
         IUsuarioService usuarioService,
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
+        INotificacionService notificacionService,
         ILogger<UsuariosController> logger)
     {
         _usuarioService = usuarioService;
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
+        _notificacionService = notificacionService;
         _logger = logger;
     }
 
@@ -126,7 +129,17 @@ public class UsuariosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, string? returnUrl)
     {
+        var usuario = await _usuarioService.GetByIdAsync(id);
         var result = await _usuarioService.SoftDeleteAsync(id);
+
+        if (result.Success && usuario != null)
+        {
+            await EnviarEmailGestionCuentaAsync(
+                usuario,
+                "Cuenta dada de baja",
+                "Tu cuenta ha sido dada de baja por administracion. Si crees que es un error, contacta con FitControl Web.");
+        }
+
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         return RedirectLocalOrIndex(returnUrl);
     }
@@ -136,6 +149,27 @@ public class UsuariosController : Controller
     public async Task<IActionResult> Reactivar(int id, string? returnUrl)
     {
         var result = await _usuarioService.ActivarAsync(id);
+
+        if (result.Success)
+        {
+            var usuario = await _usuarioService.GetByIdAsync(id);
+
+            if (usuario != null)
+            {
+                await _notificacionService.CrearAsync(
+                    usuario.Id,
+                    "Cuenta reactivada",
+                    "Tu cuenta vuelve a estar activa. Ya puedes acceder de nuevo a FitControl Web.",
+                    "success",
+                    "/Account/Login");
+
+                await EnviarEmailGestionCuentaAsync(
+                    usuario,
+                    "Cuenta reactivada",
+                    "Tu cuenta vuelve a estar activa. Ya puedes acceder de nuevo a FitControl Web.");
+            }
+        }
+
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         return RedirectLocalOrIndex(returnUrl);
     }
@@ -220,5 +254,19 @@ public class UsuariosController : Controller
         return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
             ? LocalRedirect(returnUrl)
             : RedirectToAction(nameof(Index));
+    }
+
+    private async Task EnviarEmailGestionCuentaAsync(FitControlWeb.Models.Entities.Usuario usuario, string asunto, string mensaje)
+    {
+        try
+        {
+            var template = _emailTemplateService.EmailAdminDirecto(usuario.Nombre, asunto, mensaje);
+            await _emailService.SendAsync(usuario.Email, template.Subject, template.HtmlBody);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar email de gestion de cuenta al usuario {UserId}", usuario.Id);
+            TempData["Warning"] = "La accion se realizo, pero no se pudo enviar el email informativo al usuario.";
+        }
     }
 }

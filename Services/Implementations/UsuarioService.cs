@@ -113,7 +113,9 @@ public class UsuarioService : IUsuarioService
             .Select(e => e.Id)
             .FirstOrDefaultAsync();
 
-        var fechaBaja = DateOnly.FromDateTime(DateTime.Today);
+        var ahoraBaja = DateTime.Now;
+        var fechaBaja = DateOnly.FromDateTime(ahoraBaja);
+        var horaBaja = TimeOnly.FromDateTime(ahoraBaja);
 
         var suscripcionesActivas = await _context.Suscripciones
             .Where(s => s.UsuarioId == id && s.Activa == true && s.FechaFin >= DateTime.Today)
@@ -128,7 +130,10 @@ public class UsuarioService : IUsuarioService
         {
             var reservasFuturas = await _context.Reservas
                 .Include(r => r.Clase)
-                .Where(r => r.UsuarioId == id && r.Activo == true && r.Clase.Fecha >= fechaBaja)
+                .Where(r =>
+                    r.UsuarioId == id &&
+                    r.Activo == true &&
+                    (r.Clase.Fecha > fechaBaja || (r.Clase.Fecha == fechaBaja && r.Clase.HoraFin > horaBaja)))
                 .ToListAsync();
 
             foreach (var reserva in reservasFuturas)
@@ -242,12 +247,18 @@ public class UsuarioService : IUsuarioService
         if (usuario == null)
             return ServiceResult.Fail("El usuario no existe.", "USUARIO");
 
+        if ((usuario.Activo ?? false) != model.Activo)
+        {
+            return ServiceResult.Fail(
+                "El estado del usuario se gestiona desde las acciones de Baja o Reactivar para cancelar reservas y suscripciones de forma controlada.",
+                "USUARIO_ESTADO_FLUJO");
+        }
+
         usuario.Nombre = model.Nombre.Trim();
         usuario.Apellidos = model.Apellidos.Trim();
         usuario.Email = model.Email.Trim();
         usuario.Telefono = model.Telefono;
         usuario.RolId = model.RolId;
-        usuario.Activo = model.Activo;
 
         if (!string.IsNullOrWhiteSpace(model.NuevaPassword))
             usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NuevaPassword);
@@ -335,7 +346,7 @@ public class UsuarioService : IUsuarioService
     public async Task<FileContentViewModel> ExportCsvAsync(string? search, int? rolId, bool? activo)
     {
         var usuarios = await GetFiltradosAsync(search, rolId, activo, 1, int.MaxValue);
-        var headers = new[] { "Nombre", "Apellidos", "Email", "Telefono", "Rol", "Estado" };
+        var headers = new[] { "Nombre", "Apellidos", "Email", "Telefono", "Rol", "Fecha registro", "Estado" };
 
         return new FileContentViewModel
         {
@@ -367,6 +378,7 @@ public class UsuarioService : IUsuarioService
                     u.Email,
                     u.Telefono ?? "",
                     u.Rol?.Nombre ?? "",
+                    u.FechaRegistro?.ToString("dd/MM/yyyy HH:mm") ?? "",
                     u.Activo == true ? "Activo" : "Inactivo"
                 }),
             ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -377,7 +389,7 @@ public class UsuarioService : IUsuarioService
     public async Task<FileContentViewModel> ExportPdfAsync(string? search, int? rolId, bool? activo)
     {
         var usuarios = await GetFiltradosAsync(search, rolId, activo, 1, int.MaxValue);
-        var headers = new[] { "Nombre", "Email", "Telefono", "Rol", "Estado" };
+        var headers = new[] { "Nombre", "Email", "Telefono", "Rol", "Registro", "Estado" };
 
         return new FileContentViewModel
         {
@@ -394,6 +406,7 @@ public class UsuarioService : IUsuarioService
                     u.Email,
                     u.Telefono ?? "",
                     u.Rol?.Nombre ?? "",
+                    u.FechaRegistro?.ToString("dd/MM/yyyy") ?? "",
                     u.Activo == true ? "Activo" : "Inactivo"
                 }),
             ContentType = "application/pdf",
@@ -445,6 +458,7 @@ public class UsuarioService : IUsuarioService
             Apellidos = usuario.Apellidos,
             Email = usuario.Email,
             Rol = usuario.Rol?.Nombre ?? string.Empty,
+            FechaRegistro = usuario.FechaRegistro,
             Activo = usuario.Activo ?? false
         };
     }
@@ -458,6 +472,7 @@ public class UsuarioService : IUsuarioService
             usuario.Email,
             usuario.Telefono ?? "",
             usuario.Rol?.Nombre ?? "",
+            usuario.FechaRegistro?.ToString("dd/MM/yyyy HH:mm") ?? "",
             usuario.Activo == true ? "Activo" : "Inactivo"
         };
     }

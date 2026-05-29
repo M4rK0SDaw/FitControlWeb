@@ -13,11 +13,16 @@ public class AuthService : IAuthService
 {
     private readonly FitControlDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(FitControlDbContext context, IHttpContextAccessor httpContextAccessor)
+    public AuthService(
+        FitControlDbContext context,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<AuthService> logger)
     {
         _context = context;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     public async Task<ServiceResult<Usuario>> ValidateLoginAsync(string email, string password)
@@ -49,7 +54,7 @@ public class AuthService : IAuthService
                 usuario);
         }
 
-        var passwordOk = BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
+        var passwordOk = PasswordValida(password, usuario);
 
         _context.UsuarioLoginLogs.Add(new UsuarioLoginLog
         {
@@ -225,5 +230,23 @@ public class AuthService : IAuthService
             .Replace("+", "")
             .Replace("/", "")
             .Replace("=", "");
+    }
+
+    private bool PasswordValida(string password, Usuario usuario)
+    {
+        try
+        {
+            return !string.IsNullOrWhiteSpace(usuario.PasswordHash) &&
+                   BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "El usuario {UsuarioId} tiene un PasswordHash con formato invalido.",
+                usuario.Id);
+
+            return false;
+        }
     }
 }

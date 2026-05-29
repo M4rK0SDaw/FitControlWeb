@@ -217,6 +217,12 @@
             Finaliza el @Model.FechaFinSuscripcionActiva?.ToString("dd/MM/yyyy") antes de contratar otra.
         </div>
     }
+    else if (Model.TieneSuscripcionPendientePago)
+    {
+        <div class="alert alert-warning">
+            Ya tienes una suscripcion pendiente de pago. Revisa tus facturas antes de contratar otra.
+        </div>
+    }
 
     <form asp-action="ContratarSuscripcion" method="post" id="formContratarSuscripcion">
         @Html.AntiForgeryToken()
@@ -240,7 +246,7 @@
                          data-tipo-id="@tipo.Id"
                          role="button"
                          tabindex="0"
-                         style="@(Model.TieneSuscripcionActiva ? "opacity:.65;cursor:not-allowed;" : "")">
+                         style="@((Model.TieneSuscripcionActiva || Model.TieneSuscripcionPendientePago) ? "opacity:.65;cursor:not-allowed;" : "")">
 
                         <div class="subscription-icon">
                             <i class="bi bi-stars"></i>
@@ -297,7 +303,7 @@
             const cards = document.querySelectorAll('.subscription-card');
             const hiddenInput = document.getElementById('TipoSuscripcionId');
             const form = document.getElementById('formContratarSuscripcion');
-            const bloqueadoPorSuscripcion = @(Model.TieneSuscripcionActiva ? "true" : "false");
+            const bloqueadoPorSuscripcion = @((Model.TieneSuscripcionActiva || Model.TieneSuscripcionPendientePago) ? "true" : "false");
 
             function seleccionarSuscripcion(card) {
                 const tipoId = card.getAttribute('data-tipo-id');
@@ -329,8 +335,8 @@
 
                     Swal.fire({
                         icon: 'info',
-                        title: 'Suscripcion activa',
-                        text: 'No puedes contratar otra suscripcion hasta que finalice la actual.',
+                        title: 'Suscripcion en curso',
+                        text: 'No puedes contratar otra suscripcion si ya tienes una activa o pendiente de pago.',
                         confirmButtonColor: '#ff7a00'
                     });
                     return;

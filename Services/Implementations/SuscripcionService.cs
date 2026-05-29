@@ -63,12 +63,13 @@ public class SuscripcionService : ISuscripcionService
             (!excludeId.HasValue || s.Id != excludeId.Value));
     }
 
-    private async Task<bool> UsuarioTieneSuscripcionEnCursoAsync(int usuarioId)
+    private async Task<bool> UsuarioTieneSuscripcionEnCursoAsync(int usuarioId, int? excludeId = null)
     {
         var hoy = DateTime.Today;
 
         if (await _context.Suscripciones.AnyAsync(s =>
             s.UsuarioId == usuarioId &&
+            (!excludeId.HasValue || s.Id != excludeId.Value) &&
             s.FechaFin >= hoy &&
             s.Activa == true))
         {
@@ -76,7 +77,11 @@ public class SuscripcionService : ISuscripcionService
         }
 
         var suscripcionesPendientes = await _context.Suscripciones
-            .Where(s => s.UsuarioId == usuarioId && s.FechaFin >= hoy && s.Activa != true)
+            .Where(s =>
+                s.UsuarioId == usuarioId &&
+                (!excludeId.HasValue || s.Id != excludeId.Value) &&
+                s.FechaFin >= hoy &&
+                s.Activa != true)
             .Select(s => s.Id)
             .ToListAsync();
 
@@ -99,8 +104,8 @@ public class SuscripcionService : ISuscripcionService
         if (suscripcion.FechaFin < suscripcion.FechaInicio)
             return ServiceResult.Fail("La fecha de fin no puede ser anterior a la fecha de inicio.", "FECHAS_INVALIDAS");
 
-        if (await UsuarioTieneSuscripcionActivaAsync(suscripcion.UsuarioId))
-            return ServiceResult.Fail("El usuario ya tiene una suscripcion activa.", "SUSCRIPCION_DUPLICADA");
+        if (await UsuarioTieneSuscripcionEnCursoAsync(suscripcion.UsuarioId))
+            return ServiceResult.Fail("El usuario ya tiene una suscripcion activa o pendiente de pago.", "SUSCRIPCION_DUPLICADA");
 
         suscripcion.Activa = true;
 
@@ -116,9 +121,9 @@ public class SuscripcionService : ISuscripcionService
             return ServiceResult.Fail("La fecha de fin no puede ser anterior a la fecha de inicio.", "FECHAS_INVALIDAS");
 
         if (suscripcion.Activa == true &&
-            await UsuarioTieneSuscripcionActivaAsync(suscripcion.UsuarioId, suscripcion.Id))
+            await UsuarioTieneSuscripcionEnCursoAsync(suscripcion.UsuarioId, suscripcion.Id))
         {
-            return ServiceResult.Fail("El usuario ya tiene otra suscripcion activa.", "SUSCRIPCION_DUPLICADA");
+            return ServiceResult.Fail("El usuario ya tiene otra suscripcion activa o pendiente de pago.", "SUSCRIPCION_DUPLICADA");
         }
 
         _context.Suscripciones.Update(suscripcion);
@@ -159,8 +164,8 @@ public class SuscripcionService : ISuscripcionService
         if (suscripcion.FechaFin < DateTime.Today)
             return ServiceResult.Fail("No puedes reactivar una suscripcion vencida.", "SUSCRIPCION_VENCIDA");
 
-        if (await UsuarioTieneSuscripcionActivaAsync(suscripcion.UsuarioId, suscripcion.Id))
-            return ServiceResult.Fail("El usuario ya tiene otra suscripcion activa.", "SUSCRIPCION_DUPLICADA");
+        if (await UsuarioTieneSuscripcionEnCursoAsync(suscripcion.UsuarioId, suscripcion.Id))
+            return ServiceResult.Fail("El usuario ya tiene otra suscripcion activa o pendiente de pago.", "SUSCRIPCION_DUPLICADA");
 
         suscripcion.Activa = true;
         await _context.SaveChangesAsync();

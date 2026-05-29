@@ -21,7 +21,9 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardViewModel> GetAdminDashboardAsync()
     {
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
         var hoyDateTime = DateTime.Today;
         var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         var finMes = inicioMes.AddMonths(1);
@@ -51,7 +53,7 @@ public class DashboardService : IDashboardService
 
         var clasesParaOcupacion = await _context.Clases
             .Include(c => c.Reservas)
-            .Where(c => c.Activo == true && c.Fecha >= hoy)
+            .Where(c => c.Activo == true && (c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual)))
             .ToListAsync();
 
         var plazasTotales = clasesParaOcupacion.Sum(c => c.CapacidadMaxima ?? 0);
@@ -89,7 +91,7 @@ public class DashboardService : IDashboardService
             .Include(c => c.Entrenador)
             .Include(c => c.Especialidad)
             .Include(c => c.Reservas)
-            .Where(c => c.Activo == true && c.Fecha >= hoy)
+            .Where(c => c.Activo == true && (c.Fecha > hoy || (c.Fecha == hoy && c.HoraFin > horaActual)))
             .OrderBy(c => c.Fecha)
             .ThenBy(c => c.HoraInicio)
             .Take(5)

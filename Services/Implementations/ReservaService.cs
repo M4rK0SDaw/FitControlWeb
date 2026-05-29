@@ -18,13 +18,35 @@ public class ReservaService : IReservaService
         _context = context;
     }
 
-    public async Task<List<Reserva>> GetByUsuarioAsync(int usuarioId)
+    public async Task<List<Reserva>> GetByUsuarioAsync(int usuarioId, string? vista = "proximas")
     {
-        return await _context.Reservas
+        var ahora = DateTime.Now;
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+        var normalizada = string.IsNullOrWhiteSpace(vista) ? "proximas" : vista.Trim().ToLowerInvariant();
+
+        var query = _context.Reservas
             .Include(r => r.Clase)
             .Include(r => r.EstadoReserva)
             .Where(r => r.UsuarioId == usuarioId && r.Activo == true)
-            .OrderByDescending(r => r.FechaReserva)
+            .AsQueryable();
+
+        if (normalizada == "historial")
+        {
+            query = query.Where(r =>
+                r.Clase.Fecha < hoy ||
+                (r.Clase.Fecha == hoy && r.Clase.HoraFin <= horaActual));
+        }
+        else
+        {
+            query = query.Where(r =>
+                r.Clase.Fecha > hoy ||
+                (r.Clase.Fecha == hoy && r.Clase.HoraFin > horaActual));
+        }
+
+        return await query
+            .OrderBy(r => r.Clase.Fecha)
+            .ThenBy(r => r.Clase.HoraInicio)
             .ToListAsync();
     }
 
@@ -70,8 +92,8 @@ public class ReservaService : IReservaService
         if (clase == null)
             return ServiceResult.Fail("La clase no existe o no esta activa.", "CLASE");
 
-        if (clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
-            return ServiceResult.Fail("No puedes reservar una clase pasada.", "CLASE");
+        if (ClaseFinalizada(clase.Fecha, clase.HoraFin, DateTime.Now))
+            return ServiceResult.Fail("No puedes reservar una clase pasada o ya finalizada.", "CLASE");
 
         var tieneSuscripcionActiva = await _context.Suscripciones.AnyAsync(s =>
             s.UsuarioId == usuarioId &&
@@ -135,13 +157,18 @@ public class ReservaService : IReservaService
 
     public async Task<ServiceResult> CancelarAsync(int reservaId)
     {
-        var reserva = await _context.Reservas.FirstOrDefaultAsync(r => r.Id == reservaId);
+        var reserva = await _context.Reservas
+            .Include(r => r.Clase)
+            .FirstOrDefaultAsync(r => r.Id == reservaId);
 
         if (reserva == null)
             return ServiceResult.Fail("La reserva no existe.", "RESERVA");
 
         if (reserva.Activo != true)
             return ServiceResult.Fail("La reserva ya esta cancelada.", "CANCELADA");
+
+        if (reserva.Clase == null || ClaseIniciada(reserva.Clase.Fecha, reserva.Clase.HoraInicio, DateTime.Now))
+            return ServiceResult.Fail("No puedes cancelar una reserva de una clase ya iniciada o finalizada.", "CLASE");
 
         var estadoCancelada = await _context.EstadoReservas.FirstOrDefaultAsync(e => e.Nombre == "Cancelada");
 
@@ -172,8 +199,8 @@ public class ReservaService : IReservaService
         if (reserva.Clase == null || reserva.Clase.Activo != true)
             return ServiceResult.Fail("La clase no existe o no esta activa.", "ACTIVA");
 
-        if (reserva.Clase.Fecha < DateOnly.FromDateTime(DateTime.Today))
-            return ServiceResult.Fail("No puedes reactivar una reserva de una clase pasada.", "CLASE");
+        if (ClaseFinalizada(reserva.Clase.Fecha, reserva.Clase.HoraFin, DateTime.Now))
+            return ServiceResult.Fail("No puedes reactivar una reserva de una clase pasada o ya finalizada.", "CLASE");
 
         var reservasActivas = await _context.Reservas.CountAsync(r => r.ClaseId == reserva.ClaseId && r.Activo == true);
         var capacidadMaxima = reserva.Clase.CapacidadMaxima ?? 0;
@@ -529,6 +556,22 @@ public class ReservaService : IReservaService
                 r.Clase.Fecha == clase.Fecha &&
                 clase.HoraInicio < r.Clase.HoraFin &&
                 clase.HoraFin > r.Clase.HoraInicio);
+    }
+
+    private static bool ClaseFinalizada(DateOnly fecha, TimeOnly horaFin, DateTime ahora)
+    {
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+
+        return fecha < hoy || (fecha == hoy && horaFin <= horaActual);
+    }
+
+    private static bool ClaseIniciada(DateOnly fecha, TimeOnly horaInicio, DateTime ahora)
+    {
+        var hoy = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
+
+        return fecha < hoy || (fecha == hoy && horaInicio <= horaActual);
     }
 
     private static string[] ReservaExportRow(Reserva r)

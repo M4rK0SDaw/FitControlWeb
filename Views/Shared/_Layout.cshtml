@@ -254,6 +254,7 @@
                                 aria-controls="notificationsOffcanvas">
                             <i class="bi bi-bell"></i>
                             <span>Notificaciones</span>
+                            <span class="badge rounded-pill bg-danger d-none" id="notificationsUnreadBadge">0</span>
                         </button>
 
                         <div class="user-box">
@@ -347,7 +348,7 @@
         <div class="offcanvas offcanvas-end notifications-offcanvas" tabindex="-1" id="notificationsOffcanvas" aria-labelledby="notificationsOffcanvasLabel">
             <div class="offcanvas-header border-bottom">
                 <h5 class="offcanvas-title" id="notificationsOffcanvasLabel">
-                    <i class="bi bi-bell-fill me-2"></i>Notificaciones temporales
+                    <i class="bi bi-bell-fill me-2"></i>Notificaciones
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
             </div>
@@ -580,6 +581,9 @@
             const key = 'fitcontrol-temp-notifications';
             const list = document.getElementById('notificationsList');
             const clearBtn = document.getElementById('clearNotificationsBtn');
+            const unreadBadge = document.getElementById('notificationsUnreadBadge');
+            let serverNotifications = [];
+            let serverUnreadTotal = 0;
 
             function leerNotificaciones() {
                 try {
@@ -593,22 +597,99 @@
                 sessionStorage.setItem(key, JSON.stringify(items.slice(-50)));
             }
 
+            function actualizarBadgeNotificaciones() {
+                if (!unreadBadge) return;
+
+                const total = serverUnreadTotal + leerNotificaciones().length;
+
+                if (total > 0) {
+                    unreadBadge.textContent = total > 99 ? '99+' : total.toString();
+                    unreadBadge.classList.remove('d-none');
+                } else {
+                    unreadBadge.textContent = '0';
+                    unreadBadge.classList.add('d-none');
+                }
+            }
+
             function pintarNotificaciones() {
                 if (!list) return;
-                const items = leerNotificaciones().reverse();
+                const temporales = leerNotificaciones()
+                    .slice()
+                    .reverse()
+                    .map(item => ({
+                        titulo: item.title ?? item.type ?? 'Aviso',
+                        mensaje: item.text ?? '',
+                        tipo: item.type ?? 'info',
+                        fecha: new Date(item.time).toLocaleString(),
+                        temporal: true,
+                        leida: false
+                    }));
+
+                const items = [
+                    ...serverNotifications.map(item => ({
+                        id: item.id,
+                        titulo: item.titulo,
+                        mensaje: item.mensaje,
+                        tipo: item.tipo,
+                        url: item.url,
+                        fecha: item.fecha,
+                        temporal: false,
+                        leida: item.leida
+                    })),
+                    ...temporales
+                ];
 
                 if (items.length === 0) {
-                    list.innerHTML = '<div class="text-muted">No hay notificaciones temporales.</div>';
+                    list.innerHTML = '<div class="text-muted">No hay notificaciones pendientes.</div>';
+                    actualizarBadgeNotificaciones();
                     return;
                 }
 
                 list.innerHTML = items.map(item => `
                     <div class="notification-item border rounded-3 p-3">
-                        <div class="fw-bold text-capitalize">${item.title ?? item.type ?? 'Aviso'}</div>
-                        <div>${item.text ?? ''}</div>
-                        <small class="text-muted">${new Date(item.time).toLocaleString()}</small>
+                        <div class="d-flex justify-content-between gap-2">
+                            <div class="fw-bold text-capitalize">${escapeHtml(item.titulo)}</div>
+                            ${item.temporal || item.leida ? '' : '<span class="badge bg-orange">Nueva</span>'}
+                        </div>
+                        <div>${escapeHtml(item.mensaje)}</div>
+                        <small class="text-muted">${escapeHtml(item.fecha)}</small>
+                        <div class="d-flex gap-2 mt-2">
+                            ${item.url ? `<a class="btn btn-sm btn-outline-primary" href="${escapeHtml(item.url)}">Ver</a>` : ''}
+                            ${!item.temporal && !item.leida ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-notification-read" data-id="${item.id}">Marcar leida</button>` : ''}
+                        </div>
                     </div>
                 `).join('');
+
+                actualizarBadgeNotificaciones();
+            }
+
+            async function cargarNotificacionesServidor() {
+                if (!list) return;
+
+                try {
+                    const response = await fetch('/Notificaciones/Mis');
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    serverNotifications = data.items ?? [];
+                    serverUnreadTotal = data.totalNoLeidas ?? 0;
+                    pintarNotificaciones();
+                } catch {
+                    // Si falla el panel, se conservan las notificaciones temporales del navegador.
+                }
+            }
+
+            async function marcarNotificacionLeida(id) {
+                if (!id) return;
+
+                try {
+                    await fetch(`/Notificaciones/MarcarLeida?id=${encodeURIComponent(id)}`, {
+                        method: 'POST'
+                    });
+                    await cargarNotificacionesServidor();
+                } catch {
+                    // No interrumpe la navegacion si falla el marcado.
+                }
             }
 
             document.addEventListener('fitcontrol:notify', (event) => {
@@ -620,10 +701,29 @@
 
             clearBtn?.addEventListener('click', () => {
                 guardarNotificaciones([]);
+                fetch('/Notificaciones/MarcarTodasLeidas', { method: 'POST' })
+                    .finally(cargarNotificacionesServidor);
                 pintarNotificaciones();
             });
 
+            list?.addEventListener('click', (event) => {
+                const button = event.target.closest('.btn-notification-read');
+                if (!button) return;
+                marcarNotificacionLeida(button.dataset.id);
+            });
+
             pintarNotificaciones();
+            cargarNotificacionesServidor();
+            setInterval(cargarNotificacionesServidor, 30000);
+
+            const notificationsOffcanvas = document.getElementById('notificationsOffcanvas');
+            notificationsOffcanvas?.addEventListener('shown.bs.offcanvas', () => {
+                guardarNotificaciones([]);
+                serverUnreadTotal = 0;
+                pintarNotificaciones();
+                fetch('/Notificaciones/MarcarTodasLeidas', { method: 'POST' })
+                    .finally(cargarNotificacionesServidor);
+            });
 
             if (window.signalR) {
                 const connection = new signalR.HubConnectionBuilder()
@@ -633,15 +733,6 @@
 
                 connection.on('chat:new-message', (payload) => {
                     actualizarContadorMensajes();
-
-                    document.dispatchEvent(new CustomEvent('fitcontrol:notify', {
-                        detail: {
-                            type: 'info',
-                            title: 'Mensaje',
-                            text: 'Has recibido un nuevo mensaje.',
-                            time: new Date().toISOString()
-                        }
-                    }));
 
                     const chatPanelAbierto = document.getElementById('chatOffcanvas');
                     if (chatPanelAbierto?.classList.contains('show')) {
@@ -658,10 +749,20 @@
                                 leido: payload?.leido === true
                             });
                             marcarConversacionLeida(conversacionId);
+                            return;
                         } else {
                             cargarChatPanel();
                         }
                     }
+
+                    document.dispatchEvent(new CustomEvent('fitcontrol:notify', {
+                        detail: {
+                            type: 'info',
+                            title: 'Mensaje',
+                            text: 'Has recibido un nuevo mensaje.',
+                            time: new Date().toISOString()
+                        }
+                    }));
                 });
 
                 connection.start().catch(() => {

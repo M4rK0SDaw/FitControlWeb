@@ -24,9 +24,12 @@ public class ReservasController : Controller
     }
 
     [Authorize(Roles = "Cliente")]
-    public async Task<IActionResult> MisReservas()
+    public async Task<IActionResult> MisReservas(string? vista = "proximas")
     {
-        var reservas = await _reservaService.GetByUsuarioAsync(GetUsuarioId()!.Value);
+        vista = vista == "historial" ? "historial" : "proximas";
+        ViewBag.Vista = vista;
+
+        var reservas = await _reservaService.GetByUsuarioAsync(GetUsuarioId()!.Value, vista);
         return View(reservas);
     }
 

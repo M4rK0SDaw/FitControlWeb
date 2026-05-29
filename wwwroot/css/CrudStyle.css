@@ -229,6 +229,24 @@
     border: 1px solid #eef2f7;
 }
 
+.details-table-scroll {
+    max-height: 1420px;
+    overflow: auto;
+    border: 1px solid #edf2f7;
+    border-radius: 14px;
+}
+
+.details-table-scroll .table-modern {
+    border: 0;
+    border-radius: 0;
+}
+
+.details-table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
 .info-box {
     background: #fff;
     border: 1px solid #eef2f7;
@@ -379,6 +397,14 @@
         border-radius: 16px;
     }
 
+    .page-title {
+        font-size: 1.35rem;
+    }
+
+    .filter-box {
+        padding: 14px;
+    }
+
     .page-header > div:last-child,
     .page-header .d-flex {
         width: 100%;
@@ -391,6 +417,22 @@
 
     .table-modern thead {
         font-size: .75rem;
+    }
+
+    .table-responsive {
+        border-radius: 14px;
+    }
+
+    .table-modern thead th,
+    .table-modern tbody td {
+        padding: 12px;
+        font-size: .9rem;
+    }
+
+    .table-modern .btn-group .btn-sm {
+        min-width: 32px;
+        min-height: 32px;
+        padding: .32rem .5rem;
     }
 
     .mobile-item-grid {

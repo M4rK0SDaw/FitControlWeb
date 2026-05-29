@@ -7,7 +7,7 @@ namespace FitControlWeb.Services.Interfaces;
 
 public interface IReservaService
 {
-    Task<List<Reserva>> GetByUsuarioAsync(int usuarioId);
+    Task<List<Reserva>> GetByUsuarioAsync(int usuarioId, string? vista = "proximas");
     Task<List<Reserva>> GetAllAsync();
     Task<List<Reserva>> GetByClaseAsync(int claseId);
     Task<Reserva?> GetByIdAsync(int id);

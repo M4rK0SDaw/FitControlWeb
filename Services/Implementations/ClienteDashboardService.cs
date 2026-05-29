@@ -35,6 +35,8 @@ public class ClienteDashboardService : IClienteDashboardService
             .OrderByDescending(s => s.FechaFin)
             .FirstOrDefaultAsync();
 
+        var tienePendientePago = await UsuarioTieneSuscripcionPendientePagoAsync(usuarioId);
+
         return new ClienteContratarSuscripcionViewModel
         {
             TiposDisponibles = await _context.TipoSuscripciones
@@ -42,6 +44,7 @@ public class ClienteDashboardService : IClienteDashboardService
                 .OrderBy(t => t.Precio)
                 .ToListAsync(),
             TieneSuscripcionActiva = suscripcionActiva != null,
+            TieneSuscripcionPendientePago = tienePendientePago,
             NombreSuscripcionActiva = suscripcionActiva?.TipoSuscripcion?.Nombre,
             FechaFinSuscripcionActiva = suscripcionActiva?.FechaFin
         };
@@ -66,6 +69,9 @@ public class ClienteDashboardService : IClienteDashboardService
 
         if (yaActiva)
             return ServiceResult<string>.Fail("Ya tienes una suscripcion activa.", "SUSCRIPCION_ACTIVA");
+
+        if (await UsuarioTieneSuscripcionPendientePagoAsync(usuarioId))
+            return ServiceResult<string>.Fail("Ya tienes una suscripcion pendiente de pago. Revisa tus facturas antes de contratar otra.", "SUSCRIPCION_PENDIENTE");
 
         var tipo = await _context.TipoSuscripciones
             .FirstOrDefaultAsync(t => t.Id == tipoSuscripcionId && t.Activo == true);
@@ -280,8 +286,10 @@ public class ClienteDashboardService : IClienteDashboardService
 
     public async Task<ClienteDashboardViewModel?> GetDashboardAsync(int usuarioId)
     {
+        var ahora = DateTime.Now;
         var hoy = DateTime.Today;
-        var hoyDateOnly = DateOnly.FromDateTime(DateTime.Today);
+        var hoyDateOnly = DateOnly.FromDateTime(ahora);
+        var horaActual = TimeOnly.FromDateTime(ahora);
 
         var usuario = await _context.Usuarios
             .Include(u => u.Rol)
@@ -308,7 +316,7 @@ public class ClienteDashboardService : IClienteDashboardService
             .Where(r =>
                 r.UsuarioId == usuarioId &&
                 r.Activo == true &&
-                r.Clase.Fecha >= hoyDateOnly)
+                (r.Clase.Fecha > hoyDateOnly || (r.Clase.Fecha == hoyDateOnly && r.Clase.HoraFin > horaActual)))
             .OrderBy(r => r.Clase.Fecha)
             .ThenBy(r => r.Clase.HoraInicio)
             .Take(5)
@@ -330,7 +338,7 @@ public class ClienteDashboardService : IClienteDashboardService
             .Include(c => c.Reservas)
             .Where(c =>
                 c.Activo == true &&
-                c.Fecha >= hoyDateOnly)
+                (c.Fecha > hoyDateOnly || (c.Fecha == hoyDateOnly && c.HoraFin > horaActual)))
             .OrderBy(c => c.Fecha)
             .ThenBy(c => c.HoraInicio)
             .Take(6)
@@ -339,7 +347,8 @@ public class ClienteDashboardService : IClienteDashboardService
         var totalReservasActivas = await _context.Reservas
             .CountAsync(r =>
                 r.UsuarioId == usuarioId &&
-                r.Activo == true);
+                r.Activo == true &&
+                (r.Clase.Fecha > hoyDateOnly || (r.Clase.Fecha == hoyDateOnly && r.Clase.HoraFin > horaActual)));
 
         var totalFacturasPendientes = await _context.Facturas
             .CountAsync(f =>
@@ -464,5 +473,31 @@ public class ClienteDashboardService : IClienteDashboardService
                 f.Pagada == true);
 
         return (facturas, totalItems, totalPendiente, facturasPendientes, facturasPagadas);
+    }
+
+    private async Task<bool> UsuarioTieneSuscripcionPendientePagoAsync(int usuarioId)
+    {
+        var hoy = DateTime.Today;
+        var suscripcionesPendientes = await _context.Suscripciones
+            .Where(s =>
+                s.UsuarioId == usuarioId &&
+                s.Activa != true &&
+                s.FechaFin >= hoy)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        foreach (var suscripcionId in suscripcionesPendientes)
+        {
+            if (await _context.Facturas.AnyAsync(f =>
+                f.UsuarioId == usuarioId &&
+                f.Activo == true &&
+                f.Pagada != true &&
+                f.NumeroFactura.EndsWith($"-SUS-{suscripcionId}")))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

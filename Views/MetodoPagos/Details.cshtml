@@ -75,7 +75,14 @@
     </div>
 
     <div class="info-box mt-4">
-        <h5 class="fw-bold mb-3">Pagos y facturas asociadas</h5>
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+                <h5 class="fw-bold mb-1">Pagos y facturas asociadas</h5>
+                <p class="text-muted small mb-0">Filtra por ID, factura, cliente, fecha, importe, referencia o estado.</p>
+            </div>
+
+            <span class="badge bg-light text-dark border">Mostrando hasta 25 filas visibles</span>
+        </div>
 
         @if (!pagos.Any())
         {
@@ -85,8 +92,29 @@
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-hover table-modern align-middle mb-0">
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input type="search"
+                           class="form-control"
+                           id="pagosFiltroGlobal"
+                           placeholder="Buscar en todos los campos..." />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control pagos-column-filter" data-column="id" placeholder="ID pago" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control pagos-column-filter" data-column="factura" placeholder="Factura" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control pagos-column-filter" data-column="cliente" placeholder="Cliente" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control pagos-column-filter" data-column="importe" placeholder="Importe" />
+                </div>
+            </div>
+
+            <div class="table-responsive details-table-scroll">
+                <table class="table table-hover table-modern align-middle mb-0" id="pagosTable">
                     <thead class="table-dark">
                         <tr>
                             <th>ID pago</th>
@@ -102,22 +130,35 @@
                     <tbody>
                         @foreach (var pago in pagos)
                         {
-                            <tr>
+                            var clienteTexto = pago.Factura?.Usuario != null
+                                        ? $"{pago.Factura.Usuario.Nombre} {pago.Factura.Usuario.Apellidos}"
+                                        : "Sin cliente";
+                            var emailTexto = pago.Factura?.Usuario?.Email ?? string.Empty;
+                            var fechaTexto = pago.FechaPago?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+                            var importeTexto = pago.Monto.ToString("0.00");
+                            var referenciaTexto = string.IsNullOrWhiteSpace(pago.ReferenciaExterna) ? "-" : pago.ReferenciaExterna;
+                            var estadoTexto = pago.Activo == true ? "Activo" : "Inactivo";
+
+                            <tr data-id="@pago.Id"
+                                data-factura="@(pago.Factura?.NumeroFactura ?? "")"
+                                data-cliente="@($"{clienteTexto} {emailTexto}")"
+                                data-fecha="@fechaTexto"
+                                data-importe="@importeTexto"
+                                data-referencia="@referenciaTexto"
+                                data-estado="@estadoTexto">
                                 <td class="fw-semibold">#@pago.Id</td>
                                 <td>@(pago.Factura?.NumeroFactura ?? "-")</td>
                                 <td>
-                                    @(pago.Factura?.Usuario != null
-                                        ? $"{pago.Factura.Usuario.Nombre} {pago.Factura.Usuario.Apellidos}"
-                                        : "Sin cliente")
+                                    @clienteTexto
                                     <br />
-                                    <small class="text-muted">@pago.Factura?.Usuario?.Email</small>
+                                    <small class="text-muted">@emailTexto</small>
                                 </td>
-                                <td>@(pago.FechaPago?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td>@fechaTexto</td>
                                 <td class="fw-bold">@pago.Monto.ToString("0.00") EUR</td>
-                                <td class="text-break">@(string.IsNullOrWhiteSpace(pago.ReferenciaExterna) ? "-" : pago.ReferenciaExterna)</td>
+                                <td class="text-break">@referenciaTexto</td>
                                 <td>
                                     <span class="badge @(pago.Activo == true ? "bg-success" : "bg-secondary")">
-                                        @(pago.Activo == true ? "Activo" : "Inactivo")
+                                        @estadoTexto
                                     </span>
                                 </td>
                                 <td class="text-end">
@@ -137,12 +178,44 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="pagosSinResultados" class="alert alert-info mt-3 mb-0 d-none">
+                No hay pagos que coincidan con los filtros aplicados.
+            </div>
         }
     </div>
 </div>
 
 @section Scripts {
     <script>
+        function normalizarTexto(value) {
+            return (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function filtrarPagos() {
+            const global = normalizarTexto(document.getElementById('pagosFiltroGlobal')?.value);
+            const filters = Array.from(document.querySelectorAll('.pagos-column-filter'))
+                .map(input => ({ column: input.dataset.column, value: normalizarTexto(input.value) }))
+                .filter(filter => filter.value.length > 0);
+
+            let visibles = 0;
+
+            document.querySelectorAll('#pagosTable tbody tr').forEach(row => {
+                const datasetText = normalizarTexto(Object.values(row.dataset).join(' '));
+                const matchGlobal = !global || datasetText.includes(global);
+                const matchColumns = filters.every(filter => normalizarTexto(row.dataset[filter.column]).includes(filter.value));
+                const visible = matchGlobal && matchColumns;
+
+                row.classList.toggle('d-none', !visible);
+                if (visible) visibles++;
+            });
+
+            document.getElementById('pagosSinResultados')?.classList.toggle('d-none', visibles > 0);
+        }
+
+        document.getElementById('pagosFiltroGlobal')?.addEventListener('input', filtrarPagos);
+        document.querySelectorAll('.pagos-column-filter').forEach(input => input.addEventListener('input', filtrarPagos));
+
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.addEventListener('click', function () {
                 const form = this.closest('form');

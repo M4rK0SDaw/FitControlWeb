@@ -123,7 +123,7 @@ public class ClasesController : Controller
         }
 
         TempData["Success"] = result.Message;
-        return RedirectLocalOrIndex(returnUrl);
+        return RedirectToAction(nameof(Index));
     }
 
     [Authorize(Roles = "Administrador")]
@@ -202,7 +202,7 @@ public class ClasesController : Controller
             case "CLASE":
             case "CAPACIDAD":
             case "SOLAPE":
-                ModelState.AddModelError(code, message);
+                ModelState.AddModelError(string.Empty, message);
                 break;
             default:
                 ModelState.AddModelError("", message);

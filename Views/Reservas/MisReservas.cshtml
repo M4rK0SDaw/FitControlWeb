@@ -2,6 +2,10 @@
 
 @{
     ViewData["Title"] = "Mis reservas";
+    var vista = (ViewBag.Vista as string) ?? "proximas";
+    var ahora = DateTime.Now;
+    var hoy = DateOnly.FromDateTime(ahora);
+    var horaActual = TimeOnly.FromDateTime(ahora);
 }
 
 @section Styles {
@@ -10,8 +14,27 @@
 
 <div class="page-card">
     <div class="page-header">
-        <h2 class="page-title">Mis reservas</h2>
-        <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">Reservar nueva clase</a>
+        <div>
+            <h2 class="page-title">Mis reservas</h2>
+            <p class="text-muted mb-0">Consulta tus próximas clases o revisa tu historial.</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="btn-group">
+                <a asp-action="MisReservas"
+                   asp-route-vista="proximas"
+                   class="btn @(vista == "proximas" ? "btn-orange" : "btn-outline-secondary")">
+                    Próximas
+                </a>
+                <a asp-action="MisReservas"
+                   asp-route-vista="historial"
+                   class="btn @(vista == "historial" ? "btn-orange" : "btn-outline-secondary")">
+                    Historial
+                </a>
+            </div>
+
+            <a asp-controller="Clases" asp-action="Index" class="btn btn-orange">Reservar nueva clase</a>
+        </div>
     </div>
 
    @*  @if (TempData["Success"] != null)
@@ -27,7 +50,9 @@
     @if (!Model.Any())
     {
         <div class="alert alert-info">
-            Todavía no tienes reservas. Puedes reservar una clase desde el listado de clases disponibles.
+            @(vista == "historial"
+                ? "Todavía no tienes reservas finalizadas en el historial."
+                : "Todavía no tienes próximas reservas. Puedes reservar una clase desde el listado de clases disponibles.")
         </div>
     }
     else
@@ -35,12 +60,24 @@
         <div class="row g-4">
             @foreach (var r in Model)
             {
+                var claseFinalizada = r.Clase.Fecha < hoy || (r.Clase.Fecha == hoy && r.Clase.HoraFin <= horaActual);
                 <div class="col-md-6 col-xl-4">
                     <div class="card h-100 reserva-card">
                         <div class="card-body">
-                            <span class="badge bg-warning text-dark mb-3">
-                                @r.EstadoReserva.Nombre
-                            </span>
+                            <div class="d-flex gap-2 flex-wrap mb-3">
+                                <span class="badge bg-warning text-dark">
+                                    @r.EstadoReserva.Nombre
+                                </span>
+
+                                @if (claseFinalizada)
+                                {
+                                    <span class="badge bg-secondary">Finalizada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Próxima</span>
+                                }
+                            </div>
 
                             <h4 class="fw-bold">@r.Clase.Nombre</h4>
 
@@ -73,12 +110,15 @@
                                 </a>
                             </div>
 
-                            <form asp-action="Cancelar" asp-route-id="@r.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button class="btn btn-outline-danger w-100">
-                                    Cancelar reserva
-                                </button>
-                            </form>
+                            @if (!claseFinalizada)
+                            {
+                                <form asp-action="Cancelar" asp-route-id="@r.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-outline-danger w-100">
+                                        Cancelar reserva
+                                    </button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>

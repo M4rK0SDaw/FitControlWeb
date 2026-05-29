@@ -114,7 +114,14 @@
     </div>
 
     <div class="info-box mt-4">
-        <h5 class="fw-bold mb-3">Usuarios suscritos</h5>
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+                <h5 class="fw-bold mb-1">Usuarios suscritos</h5>
+                <p class="text-muted small mb-0">Filtra por usuario, email, fechas, estado o factura.</p>
+            </div>
+
+            <span class="badge bg-light text-dark border">Mostrando hasta 25 filas visibles</span>
+        </div>
 
         @if (!suscripciones.Any())
         {
@@ -124,8 +131,29 @@
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-hover table-modern align-middle mb-0">
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input type="search"
+                           class="form-control"
+                           id="suscripcionesFiltroGlobal"
+                           placeholder="Buscar en todos los campos..." />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control suscripciones-column-filter" data-column="usuario" placeholder="Usuario" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control suscripciones-column-filter" data-column="email" placeholder="Email" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control suscripciones-column-filter" data-column="estado" placeholder="Estado" />
+                </div>
+                <div class="col-md-2">
+                    <input type="search" class="form-control suscripciones-column-filter" data-column="factura" placeholder="Factura" />
+                </div>
+            </div>
+
+            <div class="table-responsive details-table-scroll">
+                <table class="table table-hover table-modern align-middle mb-0" id="suscripcionesTable">
                     <thead class="table-dark">
                         <tr>
                             <th>Usuario</th>
@@ -141,8 +169,21 @@
                         {
                             var activa = suscripcion.Activa == true && suscripcion.FechaFin >= hoy;
                             facturasPorSuscripcion.TryGetValue(suscripcion.Id, out var factura);
+                            var usuarioTexto = suscripcion.Usuario != null
+                                ? $"{suscripcion.Usuario.Nombre} {suscripcion.Usuario.Apellidos}"
+                                : "Sin usuario";
+                            var emailTexto = suscripcion.Usuario?.Email ?? "-";
+                            var inicioTexto = suscripcion.FechaInicio.ToString("dd/MM/yyyy");
+                            var finTexto = suscripcion.FechaFin.ToString("dd/MM/yyyy");
+                            var estadoTexto = activa ? "Activa" : "Caducada/Inactiva";
+                            var facturaTexto = factura?.NumeroFactura ?? "Sin factura";
 
-                            <tr>
+                            <tr data-usuario="@usuarioTexto"
+                                data-email="@emailTexto"
+                                data-inicio="@inicioTexto"
+                                data-fin="@finTexto"
+                                data-estado="@estadoTexto"
+                                data-factura="@facturaTexto">
                                 <td>
                                     @if (suscripcion.Usuario != null)
                                     {
@@ -150,7 +191,7 @@
                                            asp-action="Details"
                                            asp-route-id="@suscripcion.Usuario.Id"
                                            class="fw-semibold">
-                                            @suscripcion.Usuario.Nombre @suscripcion.Usuario.Apellidos
+                                            @usuarioTexto
                                         </a>
                                     }
                                     else
@@ -158,12 +199,12 @@
                                         <span>Sin usuario</span>
                                     }
                                 </td>
-                                <td>@(suscripcion.Usuario?.Email ?? "-")</td>
-                                <td>@suscripcion.FechaInicio.ToString("dd/MM/yyyy")</td>
-                                <td>@suscripcion.FechaFin.ToString("dd/MM/yyyy")</td>
+                                <td>@emailTexto</td>
+                                <td>@inicioTexto</td>
+                                <td>@finTexto</td>
                                 <td>
                                     <span class="badge @(activa ? "bg-success" : "bg-secondary")">
-                                        @(activa ? "Activa" : "Caducada/Inactiva")
+                                        @estadoTexto
                                     </span>
                                 </td>
                                 <td>
@@ -186,12 +227,44 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="suscripcionesSinResultados" class="alert alert-info mt-3 mb-0 d-none">
+                No hay suscripciones que coincidan con los filtros aplicados.
+            </div>
         }
     </div>
 </div>
 
 @section Scripts {
     <script>
+        function normalizarTexto(value) {
+            return (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function filtrarSuscripciones() {
+            const global = normalizarTexto(document.getElementById('suscripcionesFiltroGlobal')?.value);
+            const filters = Array.from(document.querySelectorAll('.suscripciones-column-filter'))
+                .map(input => ({ column: input.dataset.column, value: normalizarTexto(input.value) }))
+                .filter(filter => filter.value.length > 0);
+
+            let visibles = 0;
+
+            document.querySelectorAll('#suscripcionesTable tbody tr').forEach(row => {
+                const datasetText = normalizarTexto(Object.values(row.dataset).join(' '));
+                const matchGlobal = !global || datasetText.includes(global);
+                const matchColumns = filters.every(filter => normalizarTexto(row.dataset[filter.column]).includes(filter.value));
+                const visible = matchGlobal && matchColumns;
+
+                row.classList.toggle('d-none', !visible);
+                if (visible) visibles++;
+            });
+
+            document.getElementById('suscripcionesSinResultados')?.classList.toggle('d-none', visibles > 0);
+        }
+
+        document.getElementById('suscripcionesFiltroGlobal')?.addEventListener('input', filtrarSuscripciones);
+        document.querySelectorAll('.suscripciones-column-filter').forEach(input => input.addEventListener('input', filtrarSuscripciones));
+
         document.querySelectorAll('.btn-desactivar').forEach(button => {
             button.addEventListener('click', function () {
                 const form = this.closest('form');

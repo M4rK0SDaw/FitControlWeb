@@ -25,6 +25,12 @@ public interface IClaseService
         TimeOnly horaFin,
         int? claseIdExcluir = null);
 
+    Task<bool> ClaseTieneSolapeGlobalAsync(
+        DateOnly fecha,
+        TimeOnly horaInicio,
+        TimeOnly horaFin,
+        int? claseIdExcluir = null);
+
     Task<List<Clase>> GetFiltradasAsync(string search, int? entrenadorId, int? especialidadId, string? estado, int page, int pageSize);
     Task<int> CountFiltradasAsync(string search, int? entrenadorId, int? especialidadId, string? estado);
     Task<List<ClaseListViewModel>> GetListViewAsync(string search, int? entrenadorId, int? especialidadId, string? estado, int page, int pageSize, int? usuarioClienteId);
