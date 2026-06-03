@@ -27,7 +27,3 @@ FitControl Web es una aplicacion web para la gestion integral de un gimnasio.
 ## Documentacion
 
 La documentacion tecnica para la memoria final esta en la carpeta `docs`.
-
-## Nota de configuracion
-
-Antes de publicar el proyecto en un repositorio publico, revisa `appsettings.json` y sustituye claves, contrasenas y cadenas de conexion por valores de ejemplo o variables de entorno.
